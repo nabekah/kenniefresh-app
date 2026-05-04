@@ -113,6 +113,34 @@ export interface Sale {
   notes: string;
 }
 
+export interface OnlineOrderItem {
+  productId: string;
+  productName: string;
+  sku: string;
+  quantity: number;
+  unitPrice: number;
+  unitCost: number;
+}
+
+export interface OnlineOrder {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  shippingAddress: string;
+  items: OnlineOrderItem[];
+  subtotal: number;
+  shippingFee: number;
+  tax: number;
+  total: number;
+  profit: number;
+  paymentMethod: "Card" | "Mobile" | "Cash on Delivery";
+  status: "Pending" | "Processing" | "Shipped" | "Delivered" | "Cancelled";
+  notes: string;
+  orderDate: string;
+}
+
 // ─── Storage Keys ─────────────────────────────────────────────
 
 const KEYS = {
@@ -121,6 +149,7 @@ const KEYS = {
   purchaseOrders: "sim_purchase_orders",
   sales: "sim_sales",
   expenses: "sim_expenses",
+  onlineOrders: "sim_online_orders",
 };
 
 // ─── Seed Data ────────────────────────────────────────────────
@@ -538,6 +567,40 @@ export function getExpenseSummary(days = 30) {
     .map(([name, amount]) => ({ name, amount: Math.round(amount * 100) / 100 }))
     .sort((a, b) => b.amount - a.amount);
   return { total: Math.round(total * 100) / 100, categoryBreakdown, count: period.length };
+}
+
+// Online Orders
+export function getOnlineOrders(): OnlineOrder[] {
+  return load<OnlineOrder[]>(KEYS.onlineOrders, []);
+}
+export function saveOnlineOrders(orders: OnlineOrder[]): void {
+  save(KEYS.onlineOrders, orders);
+}
+export function addOnlineOrder(o: Omit<OnlineOrder, "id" | "orderNumber" | "orderDate">): OnlineOrder {
+  const orders = getOnlineOrders();
+  const num = `ONL-${String(1000 + orders.length + 1).padStart(5, "0")}`;
+  const order: OnlineOrder = { ...o, id: nanoid(), orderNumber: num, orderDate: new Date().toISOString() };
+  orders.unshift(order);
+  saveOnlineOrders(orders);
+  // Deduct stock
+  const products = getProducts();
+  order.items.forEach(item => {
+    const prod = products.find(p => p.id === item.productId);
+    if (prod) {
+      prod.stock = Math.max(0, prod.stock - item.quantity);
+      prod.updatedAt = new Date().toISOString();
+    }
+  });
+  saveProducts(products);
+  return order;
+}
+export function updateOnlineOrder(id: string, updates: Partial<OnlineOrder>): void {
+  const orders = getOnlineOrders();
+  const idx = orders.findIndex(o => o.id === id);
+  if (idx !== -1) {
+    orders[idx] = { ...orders[idx], ...updates };
+    saveOnlineOrders(orders);
+  }
 }
 
 export function fmt(n: number): string {

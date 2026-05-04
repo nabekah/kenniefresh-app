@@ -18,6 +18,7 @@ import {
   Store,
   AlertTriangle,
   Wallet,
+  Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getProducts } from "@/lib/store";
@@ -29,6 +30,7 @@ const navItems = [
   { href: "/sales", label: "Sales", icon: ShoppingCart },
   { href: "/suppliers", label: "Suppliers", icon: Truck },
   { href: "/purchase-orders", label: "Purchase Orders", icon: ClipboardList },
+  { href: "/online-orders", label: "Online Orders", icon: Globe },
   { href: "/expenses", label: "Expenses", icon: Wallet },
   { href: "/reports", label: "Reports", icon: BarChart3 },
 ];
@@ -87,9 +89,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </nav>
 
       {/* Footer */}
-      <div className="px-5 py-4 border-t border-border">
-        <div className="text-xs text-muted-foreground">Kenniefresh.biz v1.0</div>
-        <div className="text-xs text-muted-foreground">© 2026 All rights reserved</div>
+      <div className="px-3 py-4 border-t border-border space-y-2">
+        <Link href="/shop">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md text-xs font-medium text-primary hover:bg-primary/10 transition-colors border border-primary/30">
+            <Globe className="w-3.5 h-3.5" />
+            <span>Visit Online Shop</span>
+          </div>
+        </Link>
+        <div className="px-2">
+          <div className="text-xs text-muted-foreground">Kenniefresh.biz v1.0</div>
+          <div className="text-xs text-muted-foreground">© 2026 All rights reserved</div>
+        </div>
       </div>
     </div>
   );

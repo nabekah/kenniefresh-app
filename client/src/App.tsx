@@ -1,7 +1,6 @@
 // =============================================================
 // DESIGN SYSTEM: Industrial Ledger
-// App: All routes wrapped in persistent sidebar Layout
-// Dark theme enforced globally
+// App: Admin routes inside Layout, Shop routes standalone
 // =============================================================
 
 import { Toaster } from "@/components/ui/sonner";
@@ -10,6 +9,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { CartProvider } from "./contexts/CartContext";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
@@ -19,23 +19,38 @@ import Suppliers from "./pages/Suppliers";
 import PurchaseOrders from "./pages/PurchaseOrders";
 import Reports from "./pages/Reports";
 import Expenses from "./pages/Expenses";
+import OnlineOrders from "./pages/OnlineOrders";
+import Shop from "./pages/Shop";
+import ShopCart from "./pages/ShopCart";
+import ShopCheckout from "./pages/ShopCheckout";
 
 function Router() {
   return (
-    <Layout>
-      <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/products" component={Products} />
-        <Route path="/inventory" component={Inventory} />
-        <Route path="/sales" component={Sales} />
-        <Route path="/suppliers" component={Suppliers} />
-        <Route path="/purchase-orders" component={PurchaseOrders} />
-        <Route path="/reports" component={Reports} />
-        <Route path="/expenses" component={Expenses} />
-        <Route path="/404" component={NotFound} />
-        <Route component={NotFound} />
-      </Switch>
-    </Layout>
+    <Switch>
+      {/* Public Shop Routes (no admin sidebar) */}
+      <Route path="/shop" component={Shop} />
+      <Route path="/shop/cart" component={ShopCart} />
+      <Route path="/shop/checkout" component={ShopCheckout} />
+
+      {/* Admin Routes (with sidebar Layout) */}
+      <Route>
+        <Layout>
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/products" component={Products} />
+            <Route path="/inventory" component={Inventory} />
+            <Route path="/sales" component={Sales} />
+            <Route path="/suppliers" component={Suppliers} />
+            <Route path="/purchase-orders" component={PurchaseOrders} />
+            <Route path="/online-orders" component={OnlineOrders} />
+            <Route path="/expenses" component={Expenses} />
+            <Route path="/reports" component={Reports} />
+            <Route path="/404" component={NotFound} />
+            <Route component={NotFound} />
+          </Switch>
+        </Layout>
+      </Route>
+    </Switch>
   );
 }
 
@@ -43,10 +58,12 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark">
-        <TooltipProvider>
-          <Toaster position="bottom-right" theme="dark" />
-          <Router />
-        </TooltipProvider>
+        <CartProvider>
+          <TooltipProvider>
+            <Toaster position="bottom-right" theme="dark" />
+            <Router />
+          </TooltipProvider>
+        </CartProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );
