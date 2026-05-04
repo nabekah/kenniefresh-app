@@ -135,7 +135,7 @@ export interface OnlineOrder {
   tax: number;
   total: number;
   profit: number;
-  paymentMethod: "Card" | "Mobile" | "Cash on Delivery";
+  paymentMethod: "Card" | "Mobile" | "MTN MoMo" | "Telecel Cash" | "Cash on Delivery";
   status: "Pending" | "Processing" | "Shipped" | "Delivered" | "Cancelled";
   notes: string;
   orderDate: string;

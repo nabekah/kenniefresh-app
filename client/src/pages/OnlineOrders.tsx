@@ -74,11 +74,14 @@ function OrderRow({ order, onUpdate }: { order: OnlineOrder; onUpdate: () => voi
                     </div>
                   ))}
                 </div>
-                <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
+                <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
                   <span>Subtotal: <strong className="text-foreground">{fmt(order.subtotal)}</strong></span>
                   <span>Shipping: <strong className="text-foreground">{order.shippingFee === 0 ? "FREE" : fmt(order.shippingFee)}</strong></span>
                   <span>Tax: <strong className="text-foreground">{fmt(order.tax)}</strong></span>
-                  <span>Payment: <strong className="text-foreground">{order.paymentMethod}</strong></span>
+                  <span>Payment: <strong className={cn("px-1.5 py-0.5 rounded-full font-bold",
+                    order.paymentMethod === "MTN MoMo" ? "bg-yellow-400/20 text-yellow-400" :
+                    order.paymentMethod === "Telecel Cash" ? "bg-red-500/20 text-red-400" :
+                    "text-foreground")}>{order.paymentMethod}</strong></span>
                 </div>
               </div>
               {/* Customer & Status */}
