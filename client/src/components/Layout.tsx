@@ -47,7 +47,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
         <div>
           <div className="font-bold text-sm text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-            RetailFlow
+            Kenniefresh.biz
           </div>
           <div className="text-xs text-muted-foreground">Sales & Inventory</div>
         </div>
@@ -86,7 +86,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Footer */}
       <div className="px-5 py-4 border-t border-border">
-        <div className="text-xs text-muted-foreground">RetailFlow v1.0</div>
+        <div className="text-xs text-muted-foreground">Kenniefresh.biz v1.0</div>
         <div className="text-xs text-muted-foreground">© 2026 All rights reserved</div>
       </div>
     </div>
@@ -120,7 +120,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
               <Store className="w-3 h-3 text-primary-foreground" />
             </div>
-            <span className="font-bold text-sm" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>RetailFlow</span>
+            <span className="font-bold text-sm" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Kenniefresh.biz</span>
           </div>
         </header>
 
