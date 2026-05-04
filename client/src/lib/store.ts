@@ -143,6 +143,19 @@ export interface OnlineOrder {
 
 // ─── Storage Keys ─────────────────────────────────────────────
 
+const DATA_VERSION = "v3-ghana-groceries";
+const VERSION_KEY = "sim_data_version";
+
+// Clear all stored data if the seed version has changed (forces fresh grocery data)
+if (typeof localStorage !== "undefined") {
+  const storedVersion = localStorage.getItem(VERSION_KEY);
+  if (storedVersion !== DATA_VERSION) {
+    Object.values({ products: "sim_products", suppliers: "sim_suppliers", purchaseOrders: "sim_purchase_orders", sales: "sim_sales", expenses: "sim_expenses" })
+      .forEach(k => localStorage.removeItem(k));
+    localStorage.setItem(VERSION_KEY, DATA_VERSION);
+  }
+}
+
 const KEYS = {
   products: "sim_products",
   suppliers: "sim_suppliers",
@@ -155,29 +168,39 @@ const KEYS = {
 // ─── Seed Data ────────────────────────────────────────────────
 
 const seedSuppliers: Supplier[] = [
-  { id: "sup1", name: "TechSource Ltd", contactName: "Alice Chen", email: "alice@techsource.com", phone: "+1-555-0101", address: "123 Tech Park, San Jose, CA", createdAt: "2024-01-10T08:00:00Z" },
-  { id: "sup2", name: "FashionHub Inc", contactName: "Bob Martinez", email: "bob@fashionhub.com", phone: "+1-555-0202", address: "456 Fashion Ave, New York, NY", createdAt: "2024-01-15T08:00:00Z" },
-  { id: "sup3", name: "GreenGrocer Co", contactName: "Carol Smith", email: "carol@greengrocer.com", phone: "+1-555-0303", address: "789 Market St, Portland, OR", createdAt: "2024-02-01T08:00:00Z" },
-  { id: "sup4", name: "HomeGoods Direct", contactName: "David Lee", email: "david@homegoods.com", phone: "+1-555-0404", address: "321 Home Blvd, Austin, TX", createdAt: "2024-02-10T08:00:00Z" },
+  { id: "sup1", name: "Accra Food Distributors", contactName: "Kwame Asante", email: "kwame@accrafood.com.gh", phone: "+233-24-123-4567", address: "Makola Market, Accra", createdAt: "2024-01-10T08:00:00Z" },
+  { id: "sup2", name: "Ghana Agro Supplies", contactName: "Abena Mensah", email: "abena@ghanaagro.com.gh", phone: "+233-20-987-6543", address: "Kumasi Central Market, Kumasi", createdAt: "2024-01-15T08:00:00Z" },
+  { id: "sup3", name: "Fresh Farms Ghana", contactName: "Kofi Boateng", email: "kofi@freshfarms.com.gh", phone: "+233-27-456-7890", address: "Tema Industrial Area, Tema", createdAt: "2024-02-01T08:00:00Z" },
+  { id: "sup4", name: "Kente Wholesale Ltd", contactName: "Ama Owusu", email: "ama@kentewholesale.com.gh", phone: "+233-26-321-0987", address: "Kantamanto Market, Accra", createdAt: "2024-02-10T08:00:00Z" },
 ];
 
 const seedProducts: Product[] = [
-  { id: "p1", sku: "ELEC-001", barcode: "8901234567890", name: "Wireless Headphones Pro", category: "Electronics", description: "Premium noise-cancelling wireless headphones", costPrice: 45.00, sellingPrice: 89.99, stock: 34, lowStockThreshold: 10, supplierId: "sup1", createdAt: "2024-02-01T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
-  { id: "p2", sku: "ELEC-002", barcode: "8901234567891", name: "USB-C Hub 7-Port", category: "Electronics", description: "7-port USB-C hub with HDMI and power delivery", costPrice: 18.00, sellingPrice: 39.99, stock: 7, lowStockThreshold: 10, supplierId: "sup1", createdAt: "2024-02-05T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
-  { id: "p3", sku: "ELEC-003", barcode: "8901234567892", name: "Mechanical Keyboard TKL", category: "Electronics", description: "Tenkeyless mechanical keyboard, blue switches", costPrice: 35.00, sellingPrice: 74.99, stock: 0, lowStockThreshold: 5, supplierId: "sup1", createdAt: "2024-02-10T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
-  { id: "p4", sku: "CLTH-001", barcode: "8901234567893", name: "Classic Denim Jacket", category: "Clothing", description: "Unisex classic blue denim jacket", costPrice: 22.00, sellingPrice: 59.99, stock: 18, lowStockThreshold: 8, supplierId: "sup2", createdAt: "2024-02-15T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
-  { id: "p5", sku: "CLTH-002", barcode: "8901234567894", name: "Slim Fit Chinos", category: "Clothing", description: "Men's slim fit chinos, khaki", costPrice: 15.00, sellingPrice: 44.99, stock: 3, lowStockThreshold: 8, supplierId: "sup2", createdAt: "2024-02-20T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
-  { id: "p6", sku: "FOOD-001", barcode: "8901234567895", name: "Organic Green Tea (50pk)", category: "Food & Beverage", description: "Premium organic green tea bags", costPrice: 4.50, sellingPrice: 12.99, stock: 62, lowStockThreshold: 20, supplierId: "sup3", createdAt: "2024-03-01T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
-  { id: "p7", sku: "FOOD-002", barcode: "8901234567896", name: "Cold Brew Coffee Kit", category: "Food & Beverage", description: "Cold brew coffee starter kit with jar", costPrice: 8.00, sellingPrice: 24.99, stock: 15, lowStockThreshold: 10, supplierId: "sup3", createdAt: "2024-03-05T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
-  { id: "p8", sku: "HOME-001", barcode: "8901234567897", name: "Bamboo Desk Organizer", category: "Home & Garden", description: "Eco-friendly bamboo desk organizer set", costPrice: 9.00, sellingPrice: 29.99, stock: 22, lowStockThreshold: 8, supplierId: "sup4", createdAt: "2024-03-10T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
-  { id: "p9", sku: "HOME-002", barcode: "8901234567898", name: "Scented Soy Candle Set", category: "Home & Garden", description: "Set of 3 hand-poured soy candles", costPrice: 7.50, sellingPrice: 22.99, stock: 4, lowStockThreshold: 10, supplierId: "sup4", createdAt: "2024-03-15T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
-  { id: "p10", sku: "SPRT-001", barcode: "8901234567899", name: "Yoga Mat Premium", category: "Sports", description: "6mm non-slip premium yoga mat", costPrice: 14.00, sellingPrice: 39.99, stock: 11, lowStockThreshold: 5, supplierId: "sup4", createdAt: "2024-03-20T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
+  { id: "p1",  sku: "GRC-001", barcode: "6001234500001", name: "Titus Sardines (125g)",         category: "Food & Beverage", description: "Titus sardines in tomato sauce, 125g tin. A popular Ghanaian household staple.",                costPrice: 5.50,  sellingPrice: 8.00,  stock: 120, lowStockThreshold: 30, supplierId: "sup1", createdAt: "2024-02-01T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
+  { id: "p2",  sku: "GRC-002", barcode: "6001234500002", name: "Indomie Instant Noodles (70g)", category: "Food & Beverage", description: "Indomie chicken flavour instant noodles, 70g pack. Quick and tasty meal.",                   costPrice: 2.00,  sellingPrice: 3.50,  stock: 200, lowStockThreshold: 50, supplierId: "sup1", createdAt: "2024-02-02T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
+  { id: "p3",  sku: "GRC-003", barcode: "6001234500003", name: "Milo Tin (400g)",               category: "Food & Beverage", description: "Nestlé Milo chocolate malt drink, 400g tin. Loved by kids and adults.",                     costPrice: 28.00, sellingPrice: 38.00, stock: 60,  lowStockThreshold: 15, supplierId: "sup1", createdAt: "2024-02-03T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
+  { id: "p4",  sku: "GRC-004", barcode: "6001234500004", name: "Cowbell Milk Powder (400g)",    category: "Food & Beverage", description: "Cowbell full cream milk powder, 400g. Rich and creamy for tea and porridge.",               costPrice: 22.00, sellingPrice: 32.00, stock: 45,  lowStockThreshold: 10, supplierId: "sup1", createdAt: "2024-02-04T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
+  { id: "p5",  sku: "GRC-005", barcode: "6001234500005", name: "Gino Tomato Paste (70g)",       category: "Food & Beverage", description: "Gino tomato paste sachet, 70g. Essential ingredient in Ghanaian cooking.",                costPrice: 1.50,  sellingPrice: 2.50,  stock: 300, lowStockThreshold: 80, supplierId: "sup2", createdAt: "2024-02-05T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
+  { id: "p6",  sku: "GRC-006", barcode: "6001234500006", name: "Golden Penny Rice (5kg)",       category: "Food & Beverage", description: "Golden Penny long grain parboiled rice, 5kg bag. Perfect for jollof and fried rice.",     costPrice: 42.00, sellingPrice: 58.00, stock: 80,  lowStockThreshold: 20, supplierId: "sup2", createdAt: "2024-02-06T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
+  { id: "p7",  sku: "GRC-007", barcode: "6001234500007", name: "Frytol Vegetable Oil (2L)",     category: "Food & Beverage", description: "Frytol refined vegetable cooking oil, 2 litre bottle. Ideal for frying and stewing.",    costPrice: 30.00, sellingPrice: 42.00, stock: 55,  lowStockThreshold: 15, supplierId: "sup2", createdAt: "2024-02-07T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
+  { id: "p8",  sku: "GRC-008", barcode: "6001234500008", name: "Omo Washing Powder (1kg)",      category: "Other",           description: "Omo active washing powder, 1kg pack. Powerful clean for all fabrics.",                  costPrice: 12.00, sellingPrice: 18.00, stock: 90,  lowStockThreshold: 25, supplierId: "sup3", createdAt: "2024-02-08T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
+  { id: "p9",  sku: "GRC-009", barcode: "6001234500009", name: "Geisha Soap Bar (3-pack)",      category: "Beauty",          description: "Geisha moisturising beauty soap, pack of 3 bars. Gentle on skin.",                     costPrice: 6.00,  sellingPrice: 10.00, stock: 8,   lowStockThreshold: 20, supplierId: "sup3", createdAt: "2024-02-09T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
+  { id: "p10", sku: "GRC-010", barcode: "6001234500010", name: "Lifebuoy Hand Wash (250ml)",    category: "Beauty",          description: "Lifebuoy antibacterial hand wash, 250ml pump bottle. Kills 99.9% of germs.",          costPrice: 8.00,  sellingPrice: 13.00, stock: 70,  lowStockThreshold: 20, supplierId: "sup3", createdAt: "2024-02-10T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
+  { id: "p11", sku: "GRC-011", barcode: "6001234500011", name: "Nescafé Classic (200g)",        category: "Food & Beverage", description: "Nescafé Classic instant coffee, 200g jar. Rich aroma and smooth taste.",               costPrice: 35.00, sellingPrice: 50.00, stock: 40,  lowStockThreshold: 10, supplierId: "sup1", createdAt: "2024-02-11T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
+  { id: "p12", sku: "GRC-012", barcode: "6001234500012", name: "Ideal Evaporated Milk (410g)",  category: "Food & Beverage", description: "Ideal full cream evaporated milk, 410g tin. Great for tea, coffee and baking.",        costPrice: 9.00,  sellingPrice: 14.00, stock: 100, lowStockThreshold: 30, supplierId: "sup1", createdAt: "2024-02-12T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
+  { id: "p13", sku: "GRC-013", barcode: "6001234500013", name: "Quaker Oats (1kg)",             category: "Food & Beverage", description: "Quaker rolled oats, 1kg pack. Nutritious breakfast for the whole family.",             costPrice: 18.00, sellingPrice: 26.00, stock: 50,  lowStockThreshold: 15, supplierId: "sup2", createdAt: "2024-02-13T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
+  { id: "p14", sku: "GRC-014", barcode: "6001234500014", name: "Sunlight Dish Soap (750ml)",    category: "Other",           description: "Sunlight lemon dish washing liquid, 750ml. Cuts through grease fast.",               costPrice: 10.00, sellingPrice: 16.00, stock: 3,   lowStockThreshold: 20, supplierId: "sup3", createdAt: "2024-02-14T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
+  { id: "p15", sku: "GRC-015", barcode: "6001234500015", name: "Maggi Chicken Cubes (100pk)",   category: "Food & Beverage", description: "Maggi chicken seasoning cubes, pack of 100. Adds rich flavour to all dishes.",         costPrice: 12.00, sellingPrice: 18.00, stock: 150, lowStockThreshold: 40, supplierId: "sup2", createdAt: "2024-02-15T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
+  { id: "p16", sku: "GRC-016", barcode: "6001234500016", name: "Peak Full Cream Milk (900g)",   category: "Food & Beverage", description: "Peak full cream instant milk powder, 900g tin. Nutritious and delicious.",             costPrice: 55.00, sellingPrice: 75.00, stock: 30,  lowStockThreshold: 10, supplierId: "sup1", createdAt: "2024-02-16T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
+  { id: "p17", sku: "GRC-017", barcode: "6001234500017", name: "Bama Mayonnaise (750g)",        category: "Food & Beverage", description: "Bama creamy mayonnaise, 750g jar. Perfect for sandwiches and salads.",                costPrice: 20.00, sellingPrice: 30.00, stock: 35,  lowStockThreshold: 10, supplierId: "sup4", createdAt: "2024-02-17T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
+  { id: "p18", sku: "GRC-018", barcode: "6001234500018", name: "Hollandia Yoghurt (500ml)",     category: "Food & Beverage", description: "Hollandia strawberry yoghurt drink, 500ml. Refreshing and nutritious.",               costPrice: 8.00,  sellingPrice: 13.00, stock: 0,   lowStockThreshold: 15, supplierId: "sup3", createdAt: "2024-02-18T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
+  { id: "p19", sku: "GRC-019", barcode: "6001234500019", name: "Pee Cola Soft Drink (1.5L)",    category: "Food & Beverage", description: "Pee Cola carbonated soft drink, 1.5 litre bottle. Locally made and refreshing.",       costPrice: 7.00,  sellingPrice: 12.00, stock: 60,  lowStockThreshold: 20, supplierId: "sup4", createdAt: "2024-02-19T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
+  { id: "p20", sku: "GRC-020", barcode: "6001234500020", name: "Koobi (Salted Tilapia) 500g",   category: "Food & Beverage", description: "Dried salted tilapia (koobi), 500g. A traditional Ghanaian cooking ingredient.",       costPrice: 18.00, sellingPrice: 28.00, stock: 25,  lowStockThreshold: 8,  supplierId: "sup2", createdAt: "2024-02-20T08:00:00Z", updatedAt: "2024-05-01T08:00:00Z" },
 ];
 
 function generateSales(): Sale[] {
   const sales: Sale[] = [];
   const methods: ("Cash" | "Card" | "Mobile")[] = ["Cash", "Card", "Mobile"];
-  const customers = ["Walk-in Customer", "John Doe", "Sarah Kim", "Mike Torres", "Emma Wilson", "Liam Brown", "Olivia Davis"];
+  const customers = ["Walk-in Customer", "Kwame Asante", "Abena Mensah", "Kofi Boateng", "Ama Owusu", "Yaw Darko", "Akosua Frimpong", "Nana Ama Boateng", "Kojo Mensah", "Efua Asante"];
 
   for (let i = 0; i < 60; i++) {
     const daysAgo = Math.floor(Math.random() * 90);
@@ -233,34 +256,39 @@ function generateSales(): Sale[] {
 
 const seedPurchaseOrders: PurchaseOrder[] = [
   {
-    id: "po1", orderNumber: "PO-00001", supplierId: "sup1", supplierName: "TechSource Ltd",
+    id: "po1", orderNumber: "PO-00001", supplierId: "sup1", supplierName: "Accra Food Distributors",
     items: [
-      { productId: "p1", productName: "Wireless Headphones Pro", sku: "ELEC-001", quantity: 50, unitCost: 45.00 },
-      { productId: "p2", productName: "USB-C Hub 7-Port", sku: "ELEC-002", quantity: 30, unitCost: 18.00 },
+      { productId: "p1",  productName: "Titus Sardines (125g)",        sku: "GRC-001", quantity: 200, unitCost: 5.50 },
+      { productId: "p2",  productName: "Indomie Instant Noodles (70g)", sku: "GRC-002", quantity: 300, unitCost: 2.00 },
+      { productId: "p3",  productName: "Milo Tin (400g)",               sku: "GRC-003", quantity: 80,  unitCost: 28.00 },
     ],
-    totalAmount: 2790.00, status: "Received", orderDate: "2024-03-01T08:00:00Z", expectedDate: "2024-03-15T08:00:00Z", receivedDate: "2024-03-14T08:00:00Z", notes: "Urgent restock",
+    totalAmount: 5940.00, status: "Received", orderDate: "2024-03-01T08:00:00Z", expectedDate: "2024-03-10T08:00:00Z", receivedDate: "2024-03-09T08:00:00Z", notes: "Monthly bulk stock",
   },
   {
-    id: "po2", orderNumber: "PO-00002", supplierId: "sup2", supplierName: "FashionHub Inc",
+    id: "po2", orderNumber: "PO-00002", supplierId: "sup2", supplierName: "Ghana Agro Supplies",
     items: [
-      { productId: "p4", productName: "Classic Denim Jacket", sku: "CLTH-001", quantity: 40, unitCost: 22.00 },
-      { productId: "p5", productName: "Slim Fit Chinos", sku: "CLTH-002", quantity: 40, unitCost: 15.00 },
+      { productId: "p5",  productName: "Gino Tomato Paste (70g)",   sku: "GRC-005", quantity: 500, unitCost: 1.50 },
+      { productId: "p6",  productName: "Golden Penny Rice (5kg)",   sku: "GRC-006", quantity: 100, unitCost: 42.00 },
+      { productId: "p15", productName: "Maggi Chicken Cubes (100pk)", sku: "GRC-015", quantity: 200, unitCost: 12.00 },
     ],
-    totalAmount: 1480.00, status: "Pending", orderDate: "2024-04-20T08:00:00Z", expectedDate: "2024-05-10T08:00:00Z", notes: "Spring collection restock",
+    totalAmount: 7150.00, status: "Pending", orderDate: "2024-04-20T08:00:00Z", expectedDate: "2024-05-05T08:00:00Z", notes: "Restock staples before market day",
   },
   {
-    id: "po3", orderNumber: "PO-00003", supplierId: "sup3", supplierName: "GreenGrocer Co",
+    id: "po3", orderNumber: "PO-00003", supplierId: "sup3", supplierName: "Fresh Farms Ghana",
     items: [
-      { productId: "p6", productName: "Organic Green Tea (50pk)", sku: "FOOD-001", quantity: 100, unitCost: 4.50 },
+      { productId: "p8",  productName: "Omo Washing Powder (1kg)",   sku: "GRC-008", quantity: 100, unitCost: 12.00 },
+      { productId: "p9",  productName: "Geisha Soap Bar (3-pack)",   sku: "GRC-009", quantity: 150, unitCost: 6.00 },
+      { productId: "p10", productName: "Lifebuoy Hand Wash (250ml)", sku: "GRC-010", quantity: 100, unitCost: 8.00 },
     ],
-    totalAmount: 450.00, status: "Received", orderDate: "2024-04-01T08:00:00Z", expectedDate: "2024-04-08T08:00:00Z", receivedDate: "2024-04-07T08:00:00Z", notes: "",
+    totalAmount: 3000.00, status: "Received", orderDate: "2024-04-01T08:00:00Z", expectedDate: "2024-04-10T08:00:00Z", receivedDate: "2024-04-09T08:00:00Z", notes: "",
   },
   {
-    id: "po4", orderNumber: "PO-00004", supplierId: "sup4", supplierName: "HomeGoods Direct",
+    id: "po4", orderNumber: "PO-00004", supplierId: "sup4", supplierName: "Kente Wholesale Ltd",
     items: [
-      { productId: "p9", productName: "Scented Soy Candle Set", sku: "HOME-002", quantity: 30, unitCost: 7.50 },
+      { productId: "p14", productName: "Sunlight Dish Soap (750ml)", sku: "GRC-014", quantity: 80, unitCost: 10.00 },
+      { productId: "p9",  productName: "Geisha Soap Bar (3-pack)",   sku: "GRC-009", quantity: 60, unitCost: 6.00 },
     ],
-    totalAmount: 225.00, status: "Pending", orderDate: "2024-05-01T08:00:00Z", expectedDate: "2024-05-15T08:00:00Z", notes: "Low stock alert triggered",
+    totalAmount: 1160.00, status: "Pending", orderDate: "2024-05-01T08:00:00Z", expectedDate: "2024-05-15T08:00:00Z", notes: "Low stock alert triggered for Sunlight & Geisha",
   },
 ];
 
@@ -268,21 +296,21 @@ function generateExpenses(): Expense[] {
   const expenses: Expense[] = [];
   const methods: Expense["paymentMethod"][] = ["Cash", "Card", "Bank Transfer", "Mobile"];
   const samples: { category: ExpenseCategory; description: string; vendor: string; amount: number }[] = [
-    { category: "Rent", description: "Monthly shop rent", vendor: "City Properties Ltd", amount: 1200 },
-    { category: "Utilities", description: "Electricity bill", vendor: "Power Co", amount: 145.50 },
-    { category: "Utilities", description: "Water & sewage", vendor: "City Water", amount: 42.00 },
-    { category: "Salaries", description: "Staff salaries", vendor: "Payroll", amount: 2800 },
-    { category: "Supplies", description: "Packaging materials", vendor: "PackRight Inc", amount: 89.99 },
-    { category: "Marketing", description: "Social media ads", vendor: "Meta Ads", amount: 120.00 },
-    { category: "Transport", description: "Delivery van fuel", vendor: "Shell Station", amount: 65.00 },
-    { category: "Maintenance", description: "AC servicing", vendor: "CoolAir Services", amount: 180.00 },
-    { category: "Insurance", description: "Shop insurance premium", vendor: "SafeGuard Insurance", amount: 320.00 },
-    { category: "Supplies", description: "Printer ink & paper", vendor: "OfficeMax", amount: 34.50 },
-    { category: "Marketing", description: "Flyer printing", vendor: "PrintShop", amount: 75.00 },
-    { category: "Transport", description: "Courier services", vendor: "FastShip", amount: 55.00 },
-    { category: "Taxes", description: "Quarterly tax payment", vendor: "IRS", amount: 450.00 },
-    { category: "Utilities", description: "Internet & phone", vendor: "TelecomCo", amount: 89.00 },
-    { category: "Other", description: "Miscellaneous supplies", vendor: "Various", amount: 47.25 },
+    { category: "Rent",        description: "Monthly shop rent",              vendor: "Accra Properties Ltd",        amount: 1800.00 },
+    { category: "Utilities",   description: "ECG electricity bill",           vendor: "Electricity Company of Ghana",  amount: 320.00 },
+    { category: "Utilities",   description: "Ghana Water bill",               vendor: "Ghana Water Company",          amount: 85.00 },
+    { category: "Salaries",    description: "Staff salaries",                 vendor: "Payroll",                      amount: 3500.00 },
+    { category: "Supplies",    description: "Polythene bags & packaging",     vendor: "Kantamanto Supplies",          amount: 120.00 },
+    { category: "Marketing",   description: "Facebook & Instagram ads",       vendor: "Meta Ads",                     amount: 200.00 },
+    { category: "Transport",   description: "Delivery motorbike fuel",        vendor: "Total Energies Ghana",         amount: 95.00 },
+    { category: "Maintenance", description: "Shop AC servicing",              vendor: "CoolBreeze Services",          amount: 250.00 },
+    { category: "Insurance",   description: "Shop insurance premium",         vendor: "Enterprise Insurance Ghana",   amount: 480.00 },
+    { category: "Supplies",    description: "Receipt books & stationery",     vendor: "Office World Ghana",           amount: 55.00 },
+    { category: "Marketing",   description: "Flyer & banner printing",        vendor: "Accra Print Hub",              amount: 110.00 },
+    { category: "Transport",   description: "Goods pickup from Makola",       vendor: "Yaw Transport Services",       amount: 80.00 },
+    { category: "Taxes",       description: "GRA quarterly tax payment",      vendor: "Ghana Revenue Authority",      amount: 600.00 },
+    { category: "Utilities",   description: "MTN internet & phone bundle",    vendor: "MTN Ghana",                    amount: 150.00 },
+    { category: "Other",       description: "Miscellaneous shop expenses",    vendor: "Various",                      amount: 65.00 },
   ];
   for (let i = 0; i < 30; i++) {
     const daysAgo = Math.floor(Math.random() * 90);
@@ -604,5 +632,5 @@ export function updateOnlineOrder(id: string, updates: Partial<OnlineOrder>): vo
 }
 
 export function fmt(n: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
+  return "\u20b5" + new Intl.NumberFormat("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 }
