@@ -9,8 +9,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line,
 } from "recharts";
-import { Download, BarChart3, TrendingUp, DollarSign, ShoppingBag } from "lucide-react";
-import { getSales, getProducts, getCategoryChartData, getTopProducts, getRevenueChartData, fmt } from "@/lib/store";
+import { Download, BarChart3, TrendingUp, DollarSign, ShoppingBag, TrendingDown } from "lucide-react";
+import { getSales, getProducts, getCategoryChartData, getTopProducts, getRevenueChartData, getExpenses, fmt } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 const PIE_COLORS = ["#F59E0B", "#34D399", "#60A5FA", "#A78BFA", "#F87171", "#FB923C"];
@@ -30,6 +30,7 @@ export default function Reports() {
   const [period, setPeriod] = useState<7 | 30 | 90>(30);
   const sales = useMemo(() => getSales(), []);
   const products = useMemo(() => getProducts(), []);
+  const expenses = useMemo(() => getExpenses(), []);
   const chartData = useMemo(() => getRevenueChartData(period), [period]);
   const categoryData = useMemo(() => getCategoryChartData(), []);
   const topProducts = useMemo(() => getTopProducts(10), []);
@@ -46,6 +47,15 @@ export default function Reports() {
   const totalOrders = periodSales.length;
   const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
   const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+
+  // Expenses for the period
+  const periodExpenses = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - period);
+    return expenses.filter(e => new Date(e.expenseDate) >= cutoff);
+  }, [expenses, period]);
+  const totalExpenses = periodExpenses.reduce((s, e) => s + e.amount, 0);
+  const netProfit = totalProfit - totalExpenses;
 
   // Payment method breakdown
   const paymentData = useMemo(() => {
@@ -136,20 +146,29 @@ export default function Reports() {
       </div>
 
       {/* KPI Summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {[
           { label: "Total Revenue", value: fmt(totalRevenue), icon: DollarSign, highlight: true },
-          { label: "Total Profit", value: fmt(totalProfit), icon: TrendingUp, highlight: true },
-          { label: "Profit Margin", value: `${profitMargin.toFixed(1)}%`, icon: BarChart3 },
+          { label: "Gross Profit", value: fmt(totalProfit), icon: TrendingUp, highlight: true },
+          { label: "Total Expenses", value: fmt(totalExpenses), icon: TrendingDown, danger: true },
+          { label: "Net Profit", value: fmt(netProfit), icon: BarChart3, net: true },
           { label: "Total Orders", value: totalOrders, icon: ShoppingBag },
           { label: "Avg Order Value", value: fmt(avgOrderValue), icon: DollarSign },
-        ].map(({ label, value, icon: Icon, highlight }) => (
-          <div key={label} className={cn("bg-card border border-border rounded-lg p-4", highlight && "amber-glow border-primary/30")}>
+        ].map(({ label, value, icon: Icon, highlight, danger, net }: any) => (
+          <div key={label} className={cn("bg-card border border-border rounded-lg p-4",
+            highlight && "amber-glow border-primary/30",
+            danger && "border-red-500/20 bg-red-500/5",
+            net && (netProfit >= 0 ? "border-emerald-500/20 bg-emerald-500/5" : "border-red-500/20 bg-red-500/5")
+          )}>
             <div className="flex items-center gap-2 mb-2">
-              <Icon className={cn("w-4 h-4", highlight ? "text-primary" : "text-muted-foreground")} />
+              <Icon className={cn("w-4 h-4",
+                highlight ? "text-primary" : danger ? "text-red-400" : net ? (netProfit >= 0 ? "text-emerald-400" : "text-red-400") : "text-muted-foreground"
+              )} />
               <span className="text-xs text-muted-foreground">{label}</span>
             </div>
-            <div className="data-num text-xl font-bold text-foreground">{value}</div>
+            <div className={cn("data-num text-xl font-bold",
+              danger ? "text-red-400" : net ? (netProfit >= 0 ? "text-emerald-400" : "text-red-400") : "text-foreground"
+            )}>{value}</div>
           </div>
         ))}
       </div>

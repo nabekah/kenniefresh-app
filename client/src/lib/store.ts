@@ -67,6 +67,37 @@ export interface SaleItem {
   unitCost: number;
 }
 
+export type ExpenseCategory =
+  | "Rent"
+  | "Utilities"
+  | "Salaries"
+  | "Supplies"
+  | "Marketing"
+  | "Transport"
+  | "Maintenance"
+  | "Insurance"
+  | "Taxes"
+  | "Other";
+
+export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
+  "Rent", "Utilities", "Salaries", "Supplies", "Marketing",
+  "Transport", "Maintenance", "Insurance", "Taxes", "Other",
+];
+
+export interface Expense {
+  id: string;
+  expenseNumber: string;
+  category: ExpenseCategory;
+  description: string;
+  amount: number;
+  paymentMethod: "Cash" | "Card" | "Bank Transfer" | "Mobile";
+  vendor?: string;
+  receiptRef?: string;
+  expenseDate: string;
+  notes: string;
+  createdAt: string;
+}
+
 export interface Sale {
   id: string;
   receiptNumber: string;
@@ -89,6 +120,7 @@ const KEYS = {
   suppliers: "sim_suppliers",
   purchaseOrders: "sim_purchase_orders",
   sales: "sim_sales",
+  expenses: "sim_expenses",
 };
 
 // ─── Seed Data ────────────────────────────────────────────────
@@ -202,6 +234,50 @@ const seedPurchaseOrders: PurchaseOrder[] = [
     totalAmount: 225.00, status: "Pending", orderDate: "2024-05-01T08:00:00Z", expectedDate: "2024-05-15T08:00:00Z", notes: "Low stock alert triggered",
   },
 ];
+
+function generateExpenses(): Expense[] {
+  const expenses: Expense[] = [];
+  const methods: Expense["paymentMethod"][] = ["Cash", "Card", "Bank Transfer", "Mobile"];
+  const samples: { category: ExpenseCategory; description: string; vendor: string; amount: number }[] = [
+    { category: "Rent", description: "Monthly shop rent", vendor: "City Properties Ltd", amount: 1200 },
+    { category: "Utilities", description: "Electricity bill", vendor: "Power Co", amount: 145.50 },
+    { category: "Utilities", description: "Water & sewage", vendor: "City Water", amount: 42.00 },
+    { category: "Salaries", description: "Staff salaries", vendor: "Payroll", amount: 2800 },
+    { category: "Supplies", description: "Packaging materials", vendor: "PackRight Inc", amount: 89.99 },
+    { category: "Marketing", description: "Social media ads", vendor: "Meta Ads", amount: 120.00 },
+    { category: "Transport", description: "Delivery van fuel", vendor: "Shell Station", amount: 65.00 },
+    { category: "Maintenance", description: "AC servicing", vendor: "CoolAir Services", amount: 180.00 },
+    { category: "Insurance", description: "Shop insurance premium", vendor: "SafeGuard Insurance", amount: 320.00 },
+    { category: "Supplies", description: "Printer ink & paper", vendor: "OfficeMax", amount: 34.50 },
+    { category: "Marketing", description: "Flyer printing", vendor: "PrintShop", amount: 75.00 },
+    { category: "Transport", description: "Courier services", vendor: "FastShip", amount: 55.00 },
+    { category: "Taxes", description: "Quarterly tax payment", vendor: "IRS", amount: 450.00 },
+    { category: "Utilities", description: "Internet & phone", vendor: "TelecomCo", amount: 89.00 },
+    { category: "Other", description: "Miscellaneous supplies", vendor: "Various", amount: 47.25 },
+  ];
+  for (let i = 0; i < 30; i++) {
+    const daysAgo = Math.floor(Math.random() * 90);
+    const date = new Date();
+    date.setDate(date.getDate() - daysAgo);
+    const sample = samples[Math.floor(Math.random() * samples.length)];
+    const variance = (Math.random() - 0.5) * 0.2;
+    const amount = Math.round(sample.amount * (1 + variance) * 100) / 100;
+    expenses.push({
+      id: nanoid(),
+      expenseNumber: `EXP-${String(1000 + i).padStart(5, "0")}`,
+      category: sample.category,
+      description: sample.description,
+      vendor: sample.vendor,
+      amount,
+      paymentMethod: methods[Math.floor(Math.random() * methods.length)],
+      receiptRef: Math.random() > 0.5 ? `REC-${nanoid(6).toUpperCase()}` : "",
+      expenseDate: date.toISOString(),
+      notes: "",
+      createdAt: date.toISOString(),
+    });
+  }
+  return expenses.sort((a, b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime());
+}
 
 // ─── Helpers ──────────────────────────────────────────────────
 
@@ -421,6 +497,47 @@ export function getTopProducts(limit = 5) {
     .filter(d => d.product)
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, limit);
+}
+
+// Expenses
+export function getExpenses(): Expense[] {
+  return load<Expense[]>(KEYS.expenses, generateExpenses());
+}
+export function saveExpenses(expenses: Expense[]): void {
+  save(KEYS.expenses, expenses);
+}
+export function addExpense(e: Omit<Expense, "id" | "expenseNumber" | "createdAt">): Expense {
+  const expenses = getExpenses();
+  const num = `EXP-${String(1000 + expenses.length + 1).padStart(5, "0")}`;
+  const expense: Expense = { ...e, id: nanoid(), expenseNumber: num, createdAt: new Date().toISOString() };
+  expenses.unshift(expense);
+  saveExpenses(expenses);
+  return expense;
+}
+export function updateExpense(id: string, updates: Partial<Expense>): void {
+  const expenses = getExpenses();
+  const idx = expenses.findIndex(e => e.id === id);
+  if (idx !== -1) {
+    expenses[idx] = { ...expenses[idx], ...updates };
+    saveExpenses(expenses);
+  }
+}
+export function deleteExpense(id: string): void {
+  saveExpenses(getExpenses().filter(e => e.id !== id));
+}
+
+export function getExpenseSummary(days = 30) {
+  const expenses = getExpenses();
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  const period = expenses.filter(e => new Date(e.expenseDate) >= cutoff);
+  const total = period.reduce((s, e) => s + e.amount, 0);
+  const byCategory = new Map<string, number>();
+  period.forEach(e => byCategory.set(e.category, (byCategory.get(e.category) ?? 0) + e.amount));
+  const categoryBreakdown = Array.from(byCategory.entries())
+    .map(([name, amount]) => ({ name, amount: Math.round(amount * 100) / 100 }))
+    .sort((a, b) => b.amount - a.amount);
+  return { total: Math.round(total * 100) / 100, categoryBreakdown, count: period.length };
 }
 
 export function fmt(n: number): string {

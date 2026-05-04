@@ -17,6 +17,7 @@ import {
   X,
   Store,
   AlertTriangle,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getProducts } from "@/lib/store";
@@ -28,6 +29,7 @@ const navItems = [
   { href: "/sales", label: "Sales", icon: ShoppingCart },
   { href: "/suppliers", label: "Suppliers", icon: Truck },
   { href: "/purchase-orders", label: "Purchase Orders", icon: ClipboardList },
+  { href: "/expenses", label: "Expenses", icon: Wallet },
   { href: "/reports", label: "Reports", icon: BarChart3 },
 ];
 

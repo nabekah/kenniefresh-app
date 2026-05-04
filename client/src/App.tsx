@@ -18,6 +18,7 @@ import Sales from "./pages/Sales";
 import Suppliers from "./pages/Suppliers";
 import PurchaseOrders from "./pages/PurchaseOrders";
 import Reports from "./pages/Reports";
+import Expenses from "./pages/Expenses";
 
 function Router() {
   return (
@@ -30,6 +31,7 @@ function Router() {
         <Route path="/suppliers" component={Suppliers} />
         <Route path="/purchase-orders" component={PurchaseOrders} />
         <Route path="/reports" component={Reports} />
+        <Route path="/expenses" component={Expenses} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>
