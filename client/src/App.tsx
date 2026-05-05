@@ -23,8 +23,8 @@ import OnlineOrders from "./pages/OnlineOrders";
 import Shop from "./pages/Shop";
 import ShopCart from "./pages/ShopCart";
 import ShopCheckout from "./pages/ShopCheckout";
-
 function Router() {
+  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       {/* Public Shop Routes (no admin sidebar) */}
@@ -57,10 +57,10 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
+      <ThemeProvider defaultTheme="dark" switchable>
         <CartProvider>
           <TooltipProvider>
-            <Toaster position="bottom-right" theme="dark" />
+            <Toaster position="bottom-right" />
             <Router />
           </TooltipProvider>
         </CartProvider>
