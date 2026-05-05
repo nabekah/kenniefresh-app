@@ -6,6 +6,7 @@
 
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
+import { StockAlertBell } from "./StockAlertBell";
 import {
   LayoutDashboard,
   Package,
@@ -148,6 +149,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Desktop Top Bar */}
+        <header className="hidden lg:flex items-center justify-between px-6 py-2.5 border-b border-border bg-card/50 backdrop-blur-sm">
+          <div className="text-sm text-muted-foreground font-medium">Kenniefresh.biz — Admin Panel</div>
+          <div className="flex items-center gap-2">
+            <StockAlertBell />
+            <button
+              onClick={toggleTheme}
+              className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+              title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+          </div>
+        </header>
         {/* Mobile Header */}
         <header
           className="lg:hidden flex items-center gap-3 px-4 py-2 border-b border-border"
@@ -164,13 +179,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               style={{ filter: "brightness(0) invert(1)" }}
             />
           </div>
-          <button
-            onClick={toggleTheme}
-            className="p-1.5 rounded hover:bg-white/10 text-white transition-colors"
-            title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
-          >
-            {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
+          <div className="flex items-center gap-1">
+            <StockAlertBell />
+            <button
+              onClick={toggleTheme}
+              className="p-1.5 rounded hover:bg-white/10 text-white transition-colors"
+              title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+          </div>
         </header>
 
         {/* Scrollable Page Content */}

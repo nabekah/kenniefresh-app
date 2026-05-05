@@ -12,10 +12,12 @@ import {
 } from "recharts";
 import {
   TrendingUp, TrendingDown, DollarSign, ShoppingBag,
-  Package, AlertTriangle, ArrowRight, RefreshCw,
+  Package, AlertTriangle, ArrowRight, RefreshCw, BellRing, PackageX,
 } from "lucide-react";
 import { Link } from "wouter";
-import { getDashboardStats, getRevenueChartData, getCategoryChartData, getTopProducts, fmt } from "@/lib/store";
+import { getDashboardStats, getRevenueChartData, getCategoryChartData, getTopProducts, getProducts, fmt } from "@/lib/store";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const PIE_COLORS = ["#F59E0B", "#34D399", "#60A5FA", "#A78BFA", "#F87171", "#FB923C"];
@@ -44,6 +46,91 @@ function StatCard({
           <span>{isPositive ? "+" : ""}{change.toFixed(1)}% vs last month</span>
         </div>
       )}
+    </div>
+  );
+}
+
+function DashboardAlertPanel({ outOfStockCount, lowStockCount }: { outOfStockCount: number; lowStockCount: number }) {
+  const products = useMemo(() => getProducts(), []);
+  const alertItems = useMemo(() =>
+    products
+      .filter(p => p.stock === 0 || p.stock <= p.lowStockThreshold)
+      .map(p => ({
+        id: p.id, sku: p.sku, name: p.name, stock: p.stock,
+        lowStockThreshold: p.lowStockThreshold, category: p.category,
+      }))
+      .sort((a, b) => a.stock - b.stock),
+  [products]);
+
+  const notifyMutation = trpc.alerts.checkAndNotify.useMutation({
+    onSuccess: (data) => {
+      if (data.notified) toast.success(`Notified! ${data.alertedItems?.length ?? 0} item(s) reported.`);
+      else toast.info("Already notified recently — no new alerts sent.");
+    },
+    onError: () => toast.error("Notification failed"),
+  });
+
+  if (outOfStockCount === 0 && lowStockCount === 0) return null;
+
+  return (
+    <div className="bg-card border border-border rounded-lg overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-secondary/30">
+        <div className="flex items-center gap-2">
+          <BellRing className="w-4 h-4 text-amber-500" />
+          <span className="font-semibold text-sm text-foreground">Stock Alerts</span>
+          {outOfStockCount > 0 && (
+            <span className="text-xs px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-500 font-medium">
+              {outOfStockCount} out of stock
+            </span>
+          )}
+          {lowStockCount > 0 && (
+            <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-500 font-medium">
+              {lowStockCount} low stock
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Link href="/inventory" className="text-xs text-primary hover:underline flex items-center gap-1">
+            View Inventory <ArrowRight className="w-3 h-3" />
+          </Link>
+          <button
+            onClick={() => notifyMutation.mutate({ products: alertItems })}
+            disabled={notifyMutation.isPending}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60"
+          >
+            <BellRing className="w-3 h-3" />
+            {notifyMutation.isPending ? "Sending…" : "Notify Me"}
+          </button>
+        </div>
+      </div>
+      {/* Alert items grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-border/50">
+        {alertItems.slice(0, 8).map(item => (
+          <div key={item.id} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/20 transition-colors">
+            <div className={cn(
+              "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
+              item.stock === 0 ? "bg-red-500/15" : "bg-amber-500/15"
+            )}>
+              {item.stock === 0
+                ? <PackageX className="w-4 h-4 text-red-500" />
+                : <AlertTriangle className="w-4 h-4 text-amber-500" />
+              }
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-foreground truncate">{item.name}</div>
+              <div className="text-xs text-muted-foreground">
+                {item.stock === 0 ? "Out of stock" : `${item.stock} left (min: ${item.lowStockThreshold})`}
+              </div>
+            </div>
+          </div>
+        ))}
+        {alertItems.length > 8 && (
+          <div className="flex items-center justify-center px-4 py-3 text-xs text-muted-foreground">
+            +{alertItems.length - 8} more items
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -85,34 +172,7 @@ export default function Dashboard() {
       </div>
 
       {/* Alerts Row */}
-      {(stats.lowStockCount > 0 || stats.outOfStockCount > 0) && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {stats.outOfStockCount > 0 && (
-            <Link href="/inventory">
-              <div className="flex items-center gap-3 p-4 rounded-lg border badge-out-of-stock cursor-pointer hover:opacity-90 transition-opacity">
-                <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm">{stats.outOfStockCount} Product{stats.outOfStockCount > 1 ? "s" : ""} Out of Stock</div>
-                  <div className="text-xs opacity-75">Immediate restocking required</div>
-                </div>
-                <ArrowRight className="w-4 h-4 flex-shrink-0" />
-              </div>
-            </Link>
-          )}
-          {stats.lowStockCount > 0 && (
-            <Link href="/inventory">
-              <div className="flex items-center gap-3 p-4 rounded-lg border badge-low-stock cursor-pointer hover:opacity-90 transition-opacity">
-                <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm">{stats.lowStockCount} Product{stats.lowStockCount > 1 ? "s" : ""} Low on Stock</div>
-                  <div className="text-xs opacity-75">Consider placing purchase orders</div>
-                </div>
-                <ArrowRight className="w-4 h-4 flex-shrink-0" />
-              </div>
-            </Link>
-          )}
-        </div>
-      )}
+      <DashboardAlertPanel outOfStockCount={stats.outOfStockCount} lowStockCount={stats.lowStockCount} />
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
