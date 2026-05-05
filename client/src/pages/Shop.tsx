@@ -12,11 +12,11 @@ import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 
 const HERO_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663487009313/3xoUtJNXeqJqC5zVHr4FYi/shop-hero-6zpCYwTfxygNe7mdYwA8gc.webp";
-const PROMO_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663487009313/3xoUtJNXeqJqC5zVHr4FYi/shop-promo-nX3r376RkWrbLeDhJwXR2q.webp";
+const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663487009313/3xoUtJNXeqJqC5zVHr4FYi/kenniefresh-logo-DnbYmWTkhR4zZV264vT2mc.webp";
 
 const CATEGORY_EMOJI: Record<string, string> = {
-  "Electronics": "💻", "Clothing": "👕", "Food & Beverage": "🍎",
-  "Home & Garden": "🏡", "Sports": "⚽", "Beauty": "✨", "Toys": "🧸", "Other": "📦",
+  "Beverages": "🥤", "Food & Beverage": "🍱", "Dairy": "🥛",
+  "Household": "🧹", "Snacks": "🍪", "Bakery": "🍞", "Frozen": "🧊", "Other": "📦",
 };
 
 function StarRating({ rating = 4.5 }: { rating?: number }) {
@@ -38,9 +38,13 @@ function ProductCard({ product, onView }: { product: Product; onView: (p: Produc
   return (
     <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col">
       <div className="relative overflow-hidden bg-gray-50 aspect-square cursor-pointer" onClick={() => onView(product)}>
-        <div className="w-full h-full flex items-center justify-center text-6xl bg-gradient-to-br from-amber-50 to-orange-50">
-          {CATEGORY_EMOJI[product.category] ?? "📦"}
-        </div>
+        {product.imageUrl ? (
+          <img src={product.imageUrl} alt={product.name} className="w-full h-full object-contain p-3" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-6xl" style={{ background: "linear-gradient(135deg, #e8f5e9 0%, #e3f2fd 100%)" }}>
+            {CATEGORY_EMOJI[product.category] ?? "📦"}
+          </div>
+        )}
         {outOfStock && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
             <span className="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full">Out of Stock</span>
@@ -75,9 +79,10 @@ function ProductCard({ product, onView }: { product: Product; onView: (p: Produc
             className={cn(
               "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all",
               outOfStock ? "bg-gray-100 text-gray-400 cursor-not-allowed" :
-                inCart ? "bg-emerald-500 text-white hover:bg-emerald-600" :
-                  "bg-amber-500 text-white hover:bg-amber-600 active:scale-95"
-            )}>
+                inCart ? "bg-green-600 text-white hover:bg-green-700" :
+                  "text-white hover:opacity-90 active:scale-95"
+            )}
+            style={!outOfStock && !inCart ? { background: "oklch(0.42 0.18 260)" } : {}}>
             {inCart ? <><Check className="w-3.5 h-3.5" /> Added</> : <><ShoppingCart className="w-3.5 h-3.5" /> Add</>}
           </button>
         </div>
@@ -105,8 +110,12 @@ function ProductModal({ product, onClose }: { product: Product; onClose: () => v
         </div>
         <div className="p-6">
           <div className="flex flex-col sm:flex-row gap-6">
-            <div className="sm:w-48 h-48 bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl flex items-center justify-center text-7xl flex-shrink-0">
-              {CATEGORY_EMOJI[product.category] ?? "📦"}
+            <div className="sm:w-48 h-48 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-50 flex items-center justify-center">
+              {product.imageUrl ? (
+                <img src={product.imageUrl} alt={product.name} className="w-full h-full object-contain p-3" />
+              ) : (
+                <span className="text-7xl">{CATEGORY_EMOJI[product.category] ?? "📦"}</span>
+              )}
             </div>
             <div className="flex-1">
               <h2 className="text-xl font-bold text-gray-900 mb-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{product.name}</h2>
@@ -142,7 +151,8 @@ function ProductModal({ product, onClose }: { product: Product; onClose: () => v
                     </button>
                   </div>
                   <button onClick={handleAdd}
-                    className="flex-1 flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2.5 px-5 rounded-xl transition-all active:scale-95">
+                    className="flex-1 flex items-center justify-center gap-2 text-white font-semibold py-2.5 px-5 rounded-xl transition-all active:scale-95 hover:opacity-90"
+                    style={{ background: "oklch(0.42 0.18 260)" }}>
                     <ShoppingCart className="w-4 h-4" />
                     {cartItem ? "Update Cart" : "Add to Cart"} — {fmt(product.sellingPrice * qty)}
                   </button>
@@ -196,25 +206,19 @@ export default function Shop() {
       <header className="bg-white border-b border-gray-100 sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-amber-500 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold text-sm">K</span>
-            </div>
-            <div>
-              <div className="font-bold text-gray-900 text-sm leading-none">Kenniefresh.biz</div>
-              <div className="text-xs text-gray-400">Online Shop</div>
-            </div>
+            <img src={LOGO_URL} alt="Kenniefresh" className="h-12 w-auto object-contain" />
           </div>
           <div className="flex-1 max-w-md hidden sm:block">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Search products..."
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" />
             </div>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/shop/cart">
-              <button className="relative flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all">
+              <button className="relative flex items-center gap-2 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:opacity-90" style={{ background: "oklch(0.42 0.18 260)" }}>
                 <ShoppingCart className="w-4 h-4" />
                 <span className="hidden sm:inline">Cart</span>
                 {itemCount > 0 && (
@@ -250,17 +254,17 @@ export default function Shop() {
           <div className="absolute inset-0 flex items-center">
             <div className="max-w-7xl mx-auto px-6 sm:px-8">
               <div className="max-w-lg">
-                <div className="inline-block bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-full mb-3">
-                  🎉 Free delivery on orders over $50
+                <div className="inline-block text-white text-xs font-bold px-3 py-1 rounded-full mb-3" style={{ background: "oklch(0.55 0.18 145)" }}>
+                  🎉 Free delivery on orders over ₵200
                 </div>
                 <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-3 leading-tight">
-                  Shop Fresh,<br />Shop Smart
+                  Merchandise<br />in Assorted
                 </h1>
                 <p className="text-gray-200 text-sm sm:text-base mb-5">
-                  Discover quality products at great prices. Delivered right to your door.
+                  Local &amp; Foreign goods — Water, Soft Drinks, Rice &amp; Oil, Home Goods, Baby Care and more.
                 </p>
                 <button onClick={() => document.getElementById("products-section")?.scrollIntoView({ behavior: "smooth" })}
-                  className="bg-amber-500 hover:bg-amber-600 text-white font-semibold px-6 py-3 rounded-xl transition-all flex items-center gap-2 text-sm">
+                  className="text-white font-semibold px-6 py-3 rounded-xl transition-all flex items-center gap-2 text-sm hover:opacity-90" style={{ background: "oklch(0.55 0.18 145)" }}>
                   Shop Now <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
@@ -270,14 +274,14 @@ export default function Shop() {
       </section>
 
       {/* Trust Badges */}
-      <section className="bg-amber-500 py-3">
+      <section className="py-3" style={{ background: "oklch(0.42 0.18 260)" }}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex flex-wrap justify-center gap-6 text-white text-xs font-medium">
             {[
-              { icon: "🚚", text: "Free Delivery Over $50" },
+              { icon: "🚚", text: "Free Delivery Over ₵200" },
               { icon: "🔒", text: "Secure Checkout" },
               { icon: "⭐", text: "Quality Guaranteed" },
-              { icon: "↩️", text: "Easy Returns" },
+              { icon: "📞", text: "0538979775 / 0205153749" },
             ].map(({ icon, text }) => (
               <div key={text} className="flex items-center gap-1.5">{icon} {text}</div>
             ))}
@@ -294,9 +298,10 @@ export default function Shop() {
                 className={cn(
                   "flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
                   selectedCategory === cat
-                    ? "bg-amber-500 text-white shadow-sm"
+                    ? "text-white shadow-sm"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                )}>
+                )}
+                style={selectedCategory === cat ? { background: "oklch(0.42 0.18 260)" } : {}}>
                 {cat !== "All" && <span>{CATEGORY_EMOJI[cat]}</span>}
                 {cat}
               </button>
@@ -333,24 +338,29 @@ export default function Shop() {
 
       {/* Promo Banner */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 pb-10">
-        <div className="relative rounded-2xl overflow-hidden h-40 sm:h-52">
-          <img src={PROMO_IMG} alt="Special offers" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-transparent flex items-center">
+        <div className="relative rounded-2xl overflow-hidden h-40 sm:h-52" style={{ background: "linear-gradient(135deg, oklch(0.35 0.18 260) 0%, oklch(0.42 0.18 260) 50%, oklch(0.55 0.18 145) 100%)" }}>
+          <div className="absolute inset-0 flex items-center">
             <div className="px-8">
-              <div className="text-amber-400 text-xs font-bold mb-1 uppercase tracking-wider">Special Offer</div>
+              <div className="text-white/70 text-xs font-bold mb-1 uppercase tracking-wider">Kenniefresh.biz</div>
               <h3 className="text-white text-xl sm:text-2xl font-bold mb-2">New Arrivals Every Week</h3>
-              <p className="text-gray-300 text-xs sm:text-sm">Check back often for fresh deals and new products</p>
+              <p className="text-white/70 text-xs sm:text-sm">Local &amp; Foreign goods — check back often for fresh deals</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-8 text-center text-sm">
+      <footer className="py-10 text-center text-sm" style={{ background: "oklch(0.35 0.18 260)" }}>
         <div className="max-w-7xl mx-auto px-4">
-          <div className="font-bold text-white text-base mb-1">Kenniefresh.biz</div>
-          <p className="text-xs mb-3">Your trusted online retail store</p>
-          <p className="text-xs">© {new Date().getFullYear()} Kenniefresh.biz. All rights reserved.</p>
+          <img src={LOGO_URL} alt="Kenniefresh" className="h-14 w-auto object-contain mx-auto mb-3" style={{ filter: "brightness(0) invert(1)" }} />
+          <p className="text-white/70 text-xs mb-2">Home of Living Water — Merchandise in Assorted</p>
+          <div className="flex flex-wrap justify-center gap-4 text-white/60 text-xs mb-4">
+            <span>📞 0538979775</span>
+            <span>📞 0205153749</span>
+            <span>📸 @kennie_fresh</span>
+            <span>👍 kenniefresh</span>
+          </div>
+          <p className="text-white/40 text-xs">© {new Date().getFullYear()} Kenniefresh.biz. All rights reserved.</p>
         </div>
       </footer>
 

@@ -1,7 +1,7 @@
 // =============================================================
-// DESIGN SYSTEM: Industrial Ledger
+// DESIGN SYSTEM: Kenniefresh Brand
 // Layout: Fixed left sidebar (240px) + scrollable main content
-// Active item: thick amber left border + dark bg highlight
+// Brand: Royal Blue sidebar, Green accent, Kenniefresh logo
 // =============================================================
 
 import { useState } from "react";
@@ -14,17 +14,19 @@ import {
   Truck,
   ClipboardList,
   Menu,
-  X,
   Store,
   AlertTriangle,
   Wallet,
   Globe,
   Sun,
   Moon,
+  Phone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getProducts } from "@/lib/store";
 import { useTheme } from "@/contexts/ThemeContext";
+
+const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663487009313/3xoUtJNXeqJqC5zVHr4FYi/kenniefresh-logo-DnbYmWTkhR4zZV264vT2mc.webp";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -48,23 +50,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      {/* Brand */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-border">
-        <div className="w-8 h-8 rounded bg-primary flex items-center justify-center flex-shrink-0">
-          <Store className="w-4 h-4 text-primary-foreground" />
-        </div>
-        <div>
-          <div className="font-bold text-sm text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-            Kenniefresh.biz
-          </div>
-          <div className="text-xs text-muted-foreground">Sales & Inventory</div>
-        </div>
+      {/* Brand Logo */}
+      <div className="flex items-center justify-center px-4 py-5 border-b border-sidebar-border" style={{ background: "white" }}>
+        <img
+          src={LOGO_URL}
+          alt="Kenniefresh"
+          className="h-16 w-auto object-contain"
+        />
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 py-4 overflow-y-auto">
+      <nav className="flex-1 py-4 overflow-y-auto bg-sidebar">
         <div className="px-3 mb-2">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2">Main Menu</span>
+          <span className="text-xs font-semibold uppercase tracking-wider px-2" style={{ color: "oklch(0.65 0.18 145)" }}>
+            Main Menu
+          </span>
         </div>
         {navItems.map(({ href, label, icon: Icon }) => {
           const isActive = href === "/" ? location === "/" : location.startsWith(href);
@@ -72,14 +72,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <Link key={href} href={href} onClick={() => setMobileOpen(false)}>
               <div
                 className={cn(
-                  "flex items-center gap-3 mx-2 px-3 py-2.5 rounded-md text-sm transition-all duration-150 relative group",
+                  "flex items-center gap-3 mx-2 px-3 py-2.5 rounded-md text-sm transition-all duration-150",
                   isActive
-                    ? "sidebar-active text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                    ? "sidebar-active font-medium"
+                    : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
                 )}
               >
-                <Icon className={cn("w-4 h-4 flex-shrink-0", isActive ? "text-primary" : "")} />
-                <span>{label}</span>
+                <Icon
+                  className="w-4 h-4 flex-shrink-0"
+                  style={isActive ? { color: "oklch(0.58 0.18 145)" } : {}}
+                />
+                <span className={isActive ? "text-sidebar-foreground" : ""}>{label}</span>
                 {label === "Inventory" && alertCount > 0 && (
                   <span className="ml-auto flex items-center gap-1 text-xs badge-low-stock px-1.5 py-0.5 rounded-full">
                     <AlertTriangle className="w-3 h-3" />
@@ -93,23 +96,34 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </nav>
 
       {/* Footer */}
-      <div className="px-3 py-4 border-t border-border space-y-2">
+      <div className="px-3 py-4 border-t border-sidebar-border bg-sidebar space-y-2">
+        {/* Visit Shop */}
         <Link href="/shop">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-md text-xs font-medium text-primary hover:bg-primary/10 transition-colors border border-primary/30">
-            <Globe className="w-3.5 h-3.5" />
+          <div
+            className="flex items-center gap-2 px-3 py-2 rounded-md text-xs font-semibold transition-colors"
+            style={{ background: "oklch(0.55 0.18 145)", color: "white" }}
+          >
+            <Store className="w-3.5 h-3.5" />
             <span>Visit Online Shop</span>
           </div>
         </Link>
+
+        {/* Theme toggle */}
         <button
           onClick={toggleTheme}
-          className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-xs font-medium text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
         >
           {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
           <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
         </button>
-        <div className="px-2">
-          <div className="text-xs text-muted-foreground">Kenniefresh.biz v1.0</div>
-          <div className="text-xs text-muted-foreground">© 2026 All rights reserved</div>
+
+        {/* Contact */}
+        <div className="px-2 pt-1 border-t border-sidebar-border/50">
+          <div className="flex items-center gap-1.5 text-xs text-sidebar-foreground/50 mb-0.5">
+            <Phone className="w-3 h-3" />
+            <span>0538979775 / 0205153749</span>
+          </div>
+          <div className="text-xs text-sidebar-foreground/40">© 2026 Kenniefresh.biz</div>
         </div>
       </div>
     </div>
@@ -135,19 +149,24 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile Header */}
-        <header className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-border bg-card">
-          <button onClick={() => setMobileOpen(true)} className="p-1.5 rounded hover:bg-secondary">
+        <header
+          className="lg:hidden flex items-center gap-3 px-4 py-2 border-b border-border"
+          style={{ background: "oklch(0.35 0.18 260)" }}
+        >
+          <button onClick={() => setMobileOpen(true)} className="p-1.5 rounded hover:bg-white/10 text-white">
             <Menu className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2 flex-1">
-            <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
-              <Store className="w-3 h-3 text-primary-foreground" />
-            </div>
-            <span className="font-bold text-sm" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Kenniefresh.biz</span>
+          <div className="flex-1 flex items-center justify-center">
+            <img
+              src={LOGO_URL}
+              alt="Kenniefresh"
+              className="h-9 w-auto object-contain"
+              style={{ filter: "brightness(0) invert(1)" }}
+            />
           </div>
           <button
             onClick={toggleTheme}
-            className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+            className="p-1.5 rounded hover:bg-white/10 text-white transition-colors"
             title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
           >
             {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
