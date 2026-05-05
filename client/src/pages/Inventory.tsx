@@ -4,8 +4,8 @@
 // quick stock adjustment, progress bars for stock levels
 // =============================================================
 
-import { useState, useMemo } from "react";
-import { AlertTriangle, Package, TrendingDown, CheckCircle, Search, Plus, Minus, X } from "lucide-react";
+import { useState, useMemo, useRef } from "react";
+import { AlertTriangle, Package, TrendingDown, CheckCircle, Search, Plus, Minus, X, Pencil, Check } from "lucide-react";
 import { toast } from "sonner";
 import { getProducts, updateProduct, type Product, fmt } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -69,6 +69,25 @@ export default function Inventory() {
     setProducts(getProducts());
     toast.success(`Stock adjusted: ${p.name} → ${newStock} units`);
     setAdjustId(null);
+  }
+
+  // ── Inline threshold editing ──────────────────────────────
+  const [editThresholdId, setEditThresholdId] = useState<string | null>(null);
+  const [editThresholdVal, setEditThresholdVal] = useState(0);
+  const thresholdInputRef = useRef<HTMLInputElement>(null);
+
+  function startEditThreshold(p: Product) {
+    setEditThresholdId(p.id);
+    setEditThresholdVal(p.lowStockThreshold);
+    setTimeout(() => thresholdInputRef.current?.select(), 30);
+  }
+
+  function saveThreshold(p: Product) {
+    const val = Math.max(0, Math.round(editThresholdVal));
+    updateProduct(p.id, { lowStockThreshold: val });
+    setProducts(getProducts());
+    setEditThresholdId(null);
+    toast.success(`Threshold updated: ${p.name} → ${val}`);
   }
 
   const adjustProduct = products.find(p => p.id === adjustId);
@@ -165,7 +184,32 @@ export default function Inventory() {
                   <td className="px-4 py-3 data-num text-xs text-muted-foreground">{p.sku}</td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{p.category}</td>
                   <td className="px-4 py-3 text-right data-num font-bold text-foreground">{p.stock}</td>
-                  <td className="px-4 py-3 text-right data-num text-muted-foreground">{p.lowStockThreshold}</td>
+                  <td className="px-4 py-3 text-right">
+                    {editThresholdId === p.id ? (
+                      <div className="flex items-center justify-end gap-1">
+                        <input
+                          ref={thresholdInputRef}
+                          type="number"
+                          min={0}
+                          value={editThresholdVal}
+                          onChange={e => setEditThresholdVal(Number(e.target.value))}
+                          onKeyDown={e => { if (e.key === "Enter") saveThreshold(p); if (e.key === "Escape") setEditThresholdId(null); }}
+                          className="w-16 text-right data-num text-sm bg-secondary border border-primary rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                        <button onClick={() => saveThreshold(p)} className="p-0.5 rounded text-emerald-500 hover:bg-emerald-500/10"><Check className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => setEditThresholdId(null)} className="p-0.5 rounded text-muted-foreground hover:bg-secondary"><X className="w-3.5 h-3.5" /></button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => startEditThreshold(p)}
+                        className="group flex items-center justify-end gap-1 data-num text-muted-foreground hover:text-foreground transition-colors w-full"
+                        title="Click to edit threshold"
+                      >
+                        <span>{p.lowStockThreshold}</span>
+                        <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
+                      </button>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <StockBar stock={p.stock} threshold={p.lowStockThreshold} max={maxStock} />
                   </td>

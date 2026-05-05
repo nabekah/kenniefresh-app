@@ -1,12 +1,14 @@
 // =============================================================
 // StockAlertBell — notification bell for low/out-of-stock items
-// Shows a badge count, dropdown panel, and triggers owner notify
+// Shows a badge count, dropdown panel, notify action, and
+// quick "Restock" shortcut per item → navigates to Purchase Orders
 // =============================================================
 
 import { useState, useEffect, useRef } from "react";
-import { Bell, BellRing, AlertTriangle, PackageX, X, CheckCheck } from "lucide-react";
+import { Bell, BellRing, AlertTriangle, PackageX, X, CheckCheck, ShoppingCart } from "lucide-react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { getProducts } from "@/lib/store";
+import { getProducts, getSuppliers } from "@/lib/store";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +19,7 @@ type AlertItem = {
   stock: number;
   lowStockThreshold: number;
   category: string;
+  supplierId: string;
   alertType: "out" | "low";
 };
 
@@ -25,6 +28,7 @@ export function StockAlertBell() {
   const [products] = useState(() => getProducts());
   const [lastNotified, setLastNotified] = useState<number | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const [, navigate] = useLocation();
 
   // Build alert items from localStorage products
   const alertItems: AlertItem[] = products
@@ -35,7 +39,8 @@ export function StockAlertBell() {
       name: p.name,
       stock: p.stock,
       lowStockThreshold: p.lowStockThreshold,
-      category: p.category,
+      category: p.category as string,
+      supplierId: p.supplierId,
       alertType: (p.stock === 0 ? "out" : "low") as "out" | "low",
     }))
     .sort((a, b) => (a.alertType === "out" ? -1 : 1) - (b.alertType === "out" ? -1 : 1));
@@ -69,6 +74,26 @@ export function StockAlertBell() {
 
   function handleNotify() {
     notifyMutation.mutate({ products: alertItems });
+  }
+
+  function handleRestock(item: AlertItem) {
+    // Store the prefill data in sessionStorage so PurchaseOrders page can pick it up
+    const suppliers = getSuppliers();
+    const supplier = suppliers.find(s => s.id === item.supplierId);
+    const restockQty = Math.max(item.lowStockThreshold * 3, 10); // suggest 3x threshold
+
+    const prefill = {
+      productId: item.id,
+      productName: item.name,
+      sku: item.sku,
+      supplierId: item.supplierId,
+      supplierName: supplier?.name ?? "Unknown Supplier",
+      quantity: restockQty,
+    };
+    sessionStorage.setItem("kf_restock_prefill", JSON.stringify(prefill));
+    setOpen(false);
+    navigate("/purchase-orders");
+    toast.info(`Opening Purchase Orders for ${item.name}…`);
   }
 
   if (totalAlerts === 0) {
@@ -107,7 +132,7 @@ export function StockAlertBell() {
 
       {/* Dropdown panel */}
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-96 bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-secondary/50">
             <div className="flex items-center gap-2">
@@ -141,10 +166,10 @@ export function StockAlertBell() {
             )}
           </div>
 
-          {/* Alert list */}
-          <div className="max-h-64 overflow-y-auto divide-y divide-border/50">
+          {/* Alert list with restock buttons */}
+          <div className="max-h-72 overflow-y-auto divide-y divide-border/50">
             {alertItems.map(item => (
-              <div key={item.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/30 transition-colors">
+              <div key={item.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/30 transition-colors group">
                 <div className={cn(
                   "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
                   item.alertType === "out" ? "bg-red-500/15" : "bg-amber-500/15"
@@ -163,14 +188,15 @@ export function StockAlertBell() {
                     }
                   </div>
                 </div>
-                <span className={cn(
-                  "text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0",
-                  item.alertType === "out"
-                    ? "bg-red-500/20 text-red-500"
-                    : "bg-amber-500/20 text-amber-500"
-                )}>
-                  {item.alertType === "out" ? "OUT" : "LOW"}
-                </span>
+                {/* Restock shortcut button */}
+                <button
+                  onClick={() => handleRestock(item)}
+                  className="flex-shrink-0 flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-md bg-primary/15 text-primary hover:bg-primary hover:text-primary-foreground transition-colors opacity-0 group-hover:opacity-100"
+                  title={`Create purchase order for ${item.name}`}
+                >
+                  <ShoppingCart className="w-3 h-3" />
+                  Restock
+                </button>
               </div>
             ))}
           </div>

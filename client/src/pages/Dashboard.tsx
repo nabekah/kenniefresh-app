@@ -12,10 +12,10 @@ import {
 } from "recharts";
 import {
   TrendingUp, TrendingDown, DollarSign, ShoppingBag,
-  Package, AlertTriangle, ArrowRight, RefreshCw, BellRing, PackageX,
+  Package, AlertTriangle, ArrowRight, RefreshCw, BellRing, PackageX, ShoppingCart,
 } from "lucide-react";
-import { Link } from "wouter";
-import { getDashboardStats, getRevenueChartData, getCategoryChartData, getTopProducts, getProducts, fmt } from "@/lib/store";
+import { Link, useLocation } from "wouter";
+import { getDashboardStats, getRevenueChartData, getCategoryChartData, getTopProducts, getProducts, getSuppliers, fmt } from "@/lib/store";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -52,15 +52,30 @@ function StatCard({
 
 function DashboardAlertPanel({ outOfStockCount, lowStockCount }: { outOfStockCount: number; lowStockCount: number }) {
   const products = useMemo(() => getProducts(), []);
+  const [, navigate] = useLocation();
   const alertItems = useMemo(() =>
     products
       .filter(p => p.stock === 0 || p.stock <= p.lowStockThreshold)
       .map(p => ({
         id: p.id, sku: p.sku, name: p.name, stock: p.stock,
         lowStockThreshold: p.lowStockThreshold, category: p.category,
+        supplierId: p.supplierId,
       }))
       .sort((a, b) => a.stock - b.stock),
   [products]);
+
+  function handleRestock(item: typeof alertItems[0]) {
+    const suppliers = getSuppliers();
+    const supplier = suppliers.find(s => s.id === item.supplierId);
+    const restockQty = Math.max(item.lowStockThreshold * 3, 10);
+    sessionStorage.setItem("kf_restock_prefill", JSON.stringify({
+      productId: item.id, productName: item.name, sku: item.sku,
+      supplierId: item.supplierId, supplierName: supplier?.name ?? "Unknown Supplier",
+      quantity: restockQty,
+    }));
+    navigate("/purchase-orders");
+    toast.info(`Opening Purchase Orders for ${item.name}…`);
+  }
 
   const notifyMutation = trpc.alerts.checkAndNotify.useMutation({
     onSuccess: (data) => {
@@ -107,7 +122,7 @@ function DashboardAlertPanel({ outOfStockCount, lowStockCount }: { outOfStockCou
       {/* Alert items grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-border/50">
         {alertItems.slice(0, 8).map(item => (
-          <div key={item.id} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/20 transition-colors">
+          <div key={item.id} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/20 transition-colors group">
             <div className={cn(
               "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
               item.stock === 0 ? "bg-red-500/15" : "bg-amber-500/15"
@@ -123,6 +138,14 @@ function DashboardAlertPanel({ outOfStockCount, lowStockCount }: { outOfStockCou
                 {item.stock === 0 ? "Out of stock" : `${item.stock} left (min: ${item.lowStockThreshold})`}
               </div>
             </div>
+            <button
+              onClick={() => handleRestock(item)}
+              className="flex-shrink-0 flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-md bg-primary/15 text-primary hover:bg-primary hover:text-primary-foreground transition-colors opacity-0 group-hover:opacity-100"
+              title={`Restock ${item.name}`}
+            >
+              <ShoppingCart className="w-3 h-3" />
+              Restock
+            </button>
           </div>
         ))}
         {alertItems.length > 8 && (
