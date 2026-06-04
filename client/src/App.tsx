@@ -20,17 +20,16 @@ import PurchaseOrders from "./pages/PurchaseOrders";
 import Reports from "./pages/Reports";
 import Expenses from "./pages/Expenses";
 import OnlineOrders from "./pages/OnlineOrders";
-import Shop from "./pages/Shop";
-import ShopCart from "./pages/ShopCart";
-import ShopCheckout from "./pages/ShopCheckout";
+import ShopComingSoon from "./pages/ShopComingSoon";
+// Shop, ShopCart, ShopCheckout temporarily disabled
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      {/* Public Shop Routes (no admin sidebar) */}
-      <Route path="/shop" component={Shop} />
-      <Route path="/shop/cart" component={ShopCart} />
-      <Route path="/shop/checkout" component={ShopCheckout} />
+      {/* Public Shop Routes — temporarily disabled, showing Coming Soon */}
+      <Route path="/shop" component={ShopComingSoon} />
+      <Route path="/shop/cart" component={ShopComingSoon} />
+      <Route path="/shop/checkout" component={ShopComingSoon} />
 
       {/* Admin Routes (with sidebar Layout) */}
       <Route>
