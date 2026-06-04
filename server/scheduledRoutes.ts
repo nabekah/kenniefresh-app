@@ -7,7 +7,8 @@
 // =============================================================
 
 import type { Express, Request, Response } from "express";
-import { notifyOwner } from "./_core/notification";
+// Use Railway-compatible in-app notification (no external service required)
+import { notifyOwner } from "./railwayNotification";
 
 type StockProduct = {
   name: string;

@@ -4,7 +4,8 @@
 // =============================================================
 
 import { publicProcedure, router } from "../_core/trpc";
-import { notifyOwner } from "../_core/notification";
+// Use Railway-compatible in-app notification (no external service required)
+import { notifyOwner } from "../railwayNotification";
 import { z } from "zod";
 
 // ─── In-memory alert log (survives server restarts via client localStorage) ──

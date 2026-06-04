@@ -21,11 +21,16 @@ import Reports from "./pages/Reports";
 import Expenses from "./pages/Expenses";
 import OnlineOrders from "./pages/OnlineOrders";
 import ShopComingSoon from "./pages/ShopComingSoon";
+import Login from "./pages/Login";
 // Shop, ShopCart, ShopCheckout temporarily disabled
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
+      {/* Auth Routes */}
+      <Route path="/login" component={Login} />
+      <Route path="/register" component={Login} />
+
       {/* Public Shop Routes — temporarily disabled, showing Coming Soon */}
       <Route path="/shop" component={ShopComingSoon} />
       <Route path="/shop/cart" component={ShopComingSoon} />

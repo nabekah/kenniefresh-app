@@ -5,11 +5,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 // Mock the notifyOwner helper so we don't make real HTTP calls
-vi.mock("./_core/notification", () => ({
+vi.mock("./railwayNotification", () => ({
   notifyOwner: vi.fn().mockResolvedValue(true),
 }));
 
-import { notifyOwner } from "./_core/notification";
+import { notifyOwner } from "./railwayNotification";
 import express from "express";
 import request from "supertest";
 import { registerScheduledRoutes } from "./scheduledRoutes";

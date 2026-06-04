@@ -1,12 +1,12 @@
 
 ## Railway Deployment
 
-- [ ] Audit all Manus-specific services (storage, notifications, OAuth, scheduled tasks)
-- [ ] Replace Manus storage with Cloudinary or AWS S3
-- [ ] Replace Manus OAuth with standard JWT-based auth (email/password)
-- [ ] Replace Manus notifications with email (Nodemailer/SendGrid)
-- [ ] Replace Manus scheduled tasks with node-cron
-- [ ] Add railway.json and nixpacks configuration
-- [ ] Add .env.example with all required environment variables
-- [ ] Export code to GitHub
-- [ ] Guide user through Railway deployment
+- [x] Audit all Manus-specific services (storage, notifications, OAuth, scheduled tasks)
+- [x] Replace Manus storage with local disk storage (Railway-compatible, no external service)
+- [x] Replace Manus OAuth with standard JWT-based auth (email/password)
+- [x] Replace Manus notifications with in-app notification store
+- [x] Replace Manus scheduled tasks with node-cron
+- [x] Add railway.json and nixpacks.toml configuration
+- [x] Add RAILWAY_ENV_VARS.md and RAILWAY_DEPLOY.md documentation
+- [ ] Export code to GitHub (user action — click ⋯ → GitHub in Management UI)
+- [ ] Deploy on Railway (user action — follow RAILWAY_DEPLOY.md steps)
