@@ -56,6 +56,24 @@ export async function runMigrations(): Promise<void> {
       console.warn("[Migration] Could not clean up users without passwordHash:", err.message);
     }
 
+    // Ensure at least one admin exists: promote the first email user to admin if no admin exists
+    try {
+      const [adminRows] = await connection.execute(
+        `SELECT COUNT(*) as count FROM \`users\` WHERE \`role\` = 'admin'`
+      ) as any[];
+      const adminCount = adminRows[0]?.count ?? 0;
+      if (adminCount === 0) {
+        const [updateResult] = await connection.execute(
+          `UPDATE \`users\` SET \`role\` = 'admin' WHERE \`loginMethod\` = 'email' ORDER BY \`id\` ASC LIMIT 1`
+        ) as any[];
+        if (updateResult?.affectedRows > 0) {
+          console.log('[Migration] Promoted first email user to admin role');
+        }
+      }
+    } catch (err: any) {
+      console.warn('[Migration] Could not promote admin user:', err.message);
+    }
+
     console.log("[Migration] Database migrations completed successfully");
   } catch (error) {
     console.error("[Migration] Migration failed:", error);
