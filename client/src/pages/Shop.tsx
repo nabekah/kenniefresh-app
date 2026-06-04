@@ -15,8 +15,9 @@ const HERO_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663487009313/3xoUt
 const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663487009313/3xoUtJNXeqJqC5zVHr4FYi/kenniefresh-logo-DnbYmWTkhR4zZV264vT2mc.webp";
 
 const CATEGORY_EMOJI: Record<string, string> = {
-  "Beverages": "🥤", "Food & Beverage": "🍱", "Dairy": "🥛",
-  "Household": "🧹", "Snacks": "🍪", "Bakery": "🍞", "Frozen": "🧊", "Other": "📦",
+  "Food & Beverage": "🍱", "Beverages": "🥤", "Water": "💧", "Dairy": "🥛",
+  "Household": "🧹", "Cleaning": "🧴", "Baby Care": "👶", "Rice & Staples": "🍚",
+  "Snacks": "🍪", "Cooking Oil": "🫙", "Bath & Body": "🧼", "Other": "📦",
 };
 
 function StarRating({ rating = 4.5 }: { rating?: number }) {

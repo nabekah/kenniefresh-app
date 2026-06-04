@@ -56,7 +56,7 @@ export default function ShopCart() {
               {items.map(({ product, quantity }) => (
                 <div key={product.id} className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm border border-gray-100">
                   <div className="w-16 h-16 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl flex items-center justify-center text-3xl flex-shrink-0">
-                    {({ Electronics: "💻", Clothing: "👕", "Food & Beverage": "🍎", "Home & Garden": "🏡", Sports: "⚽", Beauty: "✨", Toys: "🧸", Other: "📦" } as Record<string, string>)[product.category] ?? "📦"}
+                    {({ "Food & Beverage": "🍱", "Beverages": "🥤", "Water": "💧", "Dairy": "🥛", "Household": "🧹", "Cleaning": "🧴", "Baby Care": "👶", "Rice & Staples": "🍚", "Snacks": "🍪", "Cooking Oil": "🫙", "Bath & Body": "🧼", "Other": "📦" } as Record<string, string>)[product.category] ?? "📦"}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-900 text-sm truncate">{product.name}</h3>

@@ -20,8 +20,9 @@ type MoMoProvider = "MTN MoMo" | "Telecel Cash";
 type CheckoutStep = "form" | "momo-verify" | "momo-processing" | "confirmed";
 
 const CATEGORY_EMOJI: Record<string, string> = {
-  "Electronics": "💻", "Clothing": "👕", "Food & Beverage": "🍎",
-  "Home & Garden": "🏡", "Sports": "⚽", "Beauty": "✨", "Toys": "🧸", "Other": "📦",
+  "Food & Beverage": "🍱", "Beverages": "🥤", "Water": "💧", "Dairy": "🥛",
+  "Household": "🧹", "Cleaning": "🧴", "Baby Care": "👶", "Rice & Staples": "🍚",
+  "Snacks": "🍪", "Cooking Oil": "🫙", "Bath & Body": "🧼", "Other": "📦",
 };
 
 const MOMO_PROVIDERS: { id: MoMoProvider; color: string; bg: string; border: string; logo: string; prefix: string }[] = [

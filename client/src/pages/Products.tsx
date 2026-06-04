@@ -13,7 +13,7 @@ import {
 } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
-const CATEGORIES: Category[] = ["Food & Beverage", "Beverages", "Snacks", "Dairy", "Bakery", "Frozen", "Household", "Beauty", "Electronics", "Clothing", "Home & Garden", "Sports", "Other"];
+const CATEGORIES: Category[] = ["Food & Beverage", "Beverages", "Water", "Dairy", "Household", "Cleaning", "Baby Care", "Rice & Staples", "Snacks", "Cooking Oil", "Bath & Body", "Other"];
 
 function StockBadge({ stock, threshold }: { stock: number; threshold: number }) {
   if (stock === 0) return <span className="badge-out-of-stock text-xs px-2 py-0.5 rounded-full font-medium">Out of Stock</span>;
