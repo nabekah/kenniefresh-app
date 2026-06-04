@@ -7,6 +7,8 @@ RUN npm install -g pnpm@10.4.1 --ignore-scripts
 # Install dependencies
 FROM base AS deps
 COPY package.json pnpm-lock.yaml ./
+# Copy patches directory (required by pnpm patchedDependencies)
+COPY patches ./patches
 RUN pnpm install --frozen-lockfile
 
 # Build the app
