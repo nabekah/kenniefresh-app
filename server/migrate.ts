@@ -42,6 +42,20 @@ export async function runMigrations(): Promise<void> {
       }
     }
     
+    // Clean up users without passwordHash (created before the column was added)
+    // These users cannot login, so they need to re-register
+    try {
+      const [result] = await connection.execute(
+        `DELETE FROM \`users\` WHERE \`passwordHash\` IS NULL AND \`loginMethod\` = 'email'`
+      ) as any[];
+      const deleted = result?.affectedRows ?? 0;
+      if (deleted > 0) {
+        console.log(`[Migration] Cleaned up ${deleted} user(s) without passwordHash`);
+      }
+    } catch (err: any) {
+      console.warn("[Migration] Could not clean up users without passwordHash:", err.message);
+    }
+
     console.log("[Migration] Database migrations completed successfully");
   } catch (error) {
     console.error("[Migration] Migration failed:", error);
