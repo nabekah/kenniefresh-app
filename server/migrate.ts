@@ -56,17 +56,29 @@ export async function runMigrations(): Promise<void> {
       console.warn("[Migration] Could not clean up users without passwordHash:", err.message);
     }
 
-    // Ensure at least one admin exists: promote the first email user to admin if no admin exists
+    // Remove test/temporary accounts created during setup
+    try {
+      const [delResult] = await connection.execute(
+        `DELETE FROM \`users\` WHERE \`email\` = 'noah@kenniefresh.biz'`
+      ) as any[];
+      if ((delResult as any)?.affectedRows > 0) {
+        console.log('[Migration] Removed test account noah@kenniefresh.biz');
+      }
+    } catch (err: any) {
+      console.warn('[Migration] Could not remove test account:', err.message);
+    }
+
+    // Ensure at least one admin exists: promote admin@kenniefresh.biz to admin
     try {
       const [adminRows] = await connection.execute(
         `SELECT COUNT(*) as count FROM \`users\` WHERE \`role\` = 'admin'`
       ) as any[];
-      const adminCount = adminRows[0]?.count ?? 0;
+      const adminCount = (adminRows as any[])[0]?.count ?? 0;
       if (adminCount === 0) {
         const [updateResult] = await connection.execute(
           `UPDATE \`users\` SET \`role\` = 'admin' WHERE \`loginMethod\` = 'email' ORDER BY \`id\` ASC LIMIT 1`
         ) as any[];
-        if (updateResult?.affectedRows > 0) {
+        if ((updateResult as any)?.affectedRows > 0) {
           console.log('[Migration] Promoted first email user to admin role');
         }
       }
