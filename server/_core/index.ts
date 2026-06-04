@@ -3,10 +3,10 @@ import express from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
-import { registerStorageProxy } from "./storageProxy";
+import { registerAuthRoutes } from "../railwayAuth";
+import { registerStaticUploads } from "../localStorage";
 import { registerUploadRoute } from "../uploadRoute";
-import { registerScheduledRoutes } from "../scheduledRoutes";
+import { registerScheduledTasks } from "../railwayCron";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -33,13 +33,25 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  registerStorageProxy(app);
-  registerOAuthRoutes(app);
+
+  // Health check endpoint for Railway
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  // Railway-compatible auth routes (email+password)
+  registerAuthRoutes(app);
+
+  // Serve uploaded files as static assets
+  registerStaticUploads(app);
+
+  // Product image upload route
   registerUploadRoute(app as any);
-  registerScheduledRoutes(app as any);
+
   // tRPC API
   app.use(
     "/api/trpc",
@@ -48,7 +60,11 @@ async function startServer() {
       createContext,
     })
   );
-  // development mode uses Vite, production mode uses static files
+
+  // Register scheduled tasks (node-cron)
+  registerScheduledTasks();
+
+  // Development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {

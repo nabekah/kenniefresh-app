@@ -1,7 +1,7 @@
-// Product image upload route — uses multer (memory storage) + storagePut
+// Product image upload route — uses multer (memory storage) + local disk storage
 import { Router } from "express";
 import multer from "multer";
-import { storagePut } from "./storage";
+import { storagePut } from "./localStorage";
 
 const upload = multer({
   storage: multer.memoryStorage(),
