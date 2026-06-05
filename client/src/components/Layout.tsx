@@ -18,7 +18,6 @@ import {
   Store,
   AlertTriangle,
   Wallet,
-  Globe,
   Sun,
   Moon,
   Phone,
@@ -41,7 +40,6 @@ const navItems = [
   { href: "/sales", label: "Sales", icon: ShoppingCart },
   { href: "/suppliers", label: "Suppliers", icon: Truck },
   { href: "/purchase-orders", label: "Purchase Orders", icon: ClipboardList },
-  { href: "/online-orders", label: "Online Orders", icon: Globe },
   { href: "/expenses", label: "Expenses", icon: Wallet },
   { href: "/reports", label: "Reports", icon: BarChart3 },
 ];
