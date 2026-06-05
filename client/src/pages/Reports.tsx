@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 
 const PIE_COLORS = ["#F59E0B", "#34D399", "#60A5FA", "#A78BFA", "#F87171", "#FB923C"];
 
-type PeriodMode = "daily" | "weekly" | "monthly" | "custom";
+type PeriodMode = "daily" | "weekly" | "monthly" | "yearly" | "custom";
 
 function exportCSV(data: object[], filename: string) {
   if (data.length === 0) return;
@@ -79,6 +79,11 @@ export default function Reports() {
       const s = startOfMonth(now);
       const e = endOfMonth(now);
       return { startDate: s, endDate: e, chartDays: 30 };
+    }
+    if (mode === "yearly") {
+      const s = new Date(now.getFullYear(), 0, 1);
+      const e = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+      return { startDate: s, endDate: e, chartDays: 365 };
     }
     // custom
     const s = new Date(customStart + "T00:00:00");
@@ -195,6 +200,7 @@ export default function Reports() {
     if (mode === "daily") return `Today — ${startDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}`;
     if (mode === "weekly") return `This Week — ${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} to ${endDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
     if (mode === "monthly") return `This Month — ${startDate.toLocaleDateString("en-US", { month: "long", year: "numeric" })}`;
+    if (mode === "yearly") return `This Year — ${startDate.getFullYear()}`;
     return `${new Date(customStart).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} — ${new Date(customEnd).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
   }, [mode, startDate, endDate, customStart, customEnd]);
 
@@ -236,6 +242,7 @@ export default function Reports() {
     { key: "daily", label: "Daily" },
     { key: "weekly", label: "Weekly" },
     { key: "monthly", label: "Monthly" },
+    { key: "yearly", label: "Yearly" },
     { key: "custom", label: "Custom" },
   ];
 
