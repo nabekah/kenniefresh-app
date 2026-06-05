@@ -597,12 +597,18 @@ export function getDashboardStats() {
   };
 }
 
-export function getRevenueChartData(days = 30) {
+export function getRevenueChartData(days = 30, startDate?: Date, endDate?: Date) {
   const sales = getSales();
   const result: { date: string; revenue: number; profit: number; orders: number }[] = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
+  const end = endDate ? new Date(endDate) : new Date();
+  const start = startDate ? new Date(startDate) : (() => { const d = new Date(end); d.setDate(d.getDate() - (days - 1)); return d; })();
+  // Normalise to midnight
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+  const totalDays = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+  for (let i = 0; i < totalDays; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
     const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     const daySales = sales.filter(s => {
       const sd = new Date(s.saleDate);
