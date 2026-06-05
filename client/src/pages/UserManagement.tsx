@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
@@ -103,9 +103,14 @@ export default function UserManagement() {
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
 
-  // Redirect non-admins
+  // Redirect non-admins — must be in useEffect to avoid setState-during-render
+  useEffect(() => {
+    if (currentUser && currentUser.role !== "admin") {
+      navigate("/");
+    }
+  }, [currentUser, navigate]);
+
   if (currentUser && currentUser.role !== "admin") {
-    navigate("/");
     return null;
   }
 

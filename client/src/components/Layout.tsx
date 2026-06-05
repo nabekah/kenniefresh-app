@@ -4,7 +4,7 @@
 // Brand: Royal Blue sidebar, Green accent, Kenniefresh logo
 // =============================================================
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { StockAlertBell } from "./StockAlertBell";
 import {
@@ -65,9 +65,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const products = getProducts();
   const alertCount = products.filter(p => p.stock <= p.lowStockThreshold).length;
 
-  // Redirect to login if not authenticated
-  if (!loading && !isAuthenticated) {
-    navigate("/login");
+  // Redirect to login if not authenticated — must be in useEffect to avoid setState-during-render
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      navigate("/login");
+    }
+  }, [loading, isAuthenticated, navigate]);
+
+  // While auth is loading or redirecting, render nothing
+  if (loading || !isAuthenticated) {
     return null;
   }
 
