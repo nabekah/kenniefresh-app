@@ -22,10 +22,15 @@ import {
   Sun,
   Moon,
   Phone,
+  Users,
+  LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getProducts } from "@/lib/store";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
 
 const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663487009313/3xoUtJNXeqJqC5zVHr4FYi/kenniefresh-logo-DnbYmWTkhR4zZV264vT2mc.webp";
 
@@ -41,13 +46,32 @@ const navItems = [
   { href: "/reports", label: "Reports", icon: BarChart3 },
 ];
 
+const adminNavItems = [
+  { href: "/users", label: "User Management", icon: Users },
+];
+
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
+  const { user, isAuthenticated, loading } = useAuth();
+
+  const logoutMutation = trpc.auth.logout.useMutation({
+    onSuccess: () => {
+      navigate("/login");
+    },
+  });
 
   const products = getProducts();
   const alertCount = products.filter(p => p.stock <= p.lowStockThreshold).length;
+
+  // Redirect to login if not authenticated
+  if (!loading && !isAuthenticated) {
+    navigate("/login");
+    return null;
+  }
+
+  const isAdmin = user?.role === "admin";
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -94,10 +118,61 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </Link>
           );
         })}
+
+        {/* Admin-only section */}
+        {isAdmin && (
+          <>
+            <div className="px-3 mt-4 mb-2">
+              <span className="text-xs font-semibold uppercase tracking-wider px-2 flex items-center gap-1" style={{ color: "oklch(0.65 0.18 260)" }}>
+                <ShieldCheck className="w-3 h-3" /> Admin
+              </span>
+            </div>
+            {adminNavItems.map(({ href, label, icon: Icon }) => {
+              const isActive = location.startsWith(href);
+              return (
+                <Link key={href} href={href} onClick={() => setMobileOpen(false)}>
+                  <div
+                    className={cn(
+                      "flex items-center gap-3 mx-2 px-3 py-2.5 rounded-md text-sm transition-all duration-150",
+                      isActive
+                        ? "sidebar-active font-medium"
+                        : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                    )}
+                  >
+                    <Icon
+                      className="w-4 h-4 flex-shrink-0"
+                      style={isActive ? { color: "oklch(0.58 0.18 260)" } : {}}
+                    />
+                    <span className={isActive ? "text-sidebar-foreground" : ""}>{label}</span>
+                  </div>
+                </Link>
+              );
+            })}
+          </>
+        )}
       </nav>
 
       {/* Footer */}
       <div className="px-3 py-4 border-t border-sidebar-border bg-sidebar space-y-2">
+        {/* Current user info */}
+        {user && (
+          <div className="px-2 py-2 rounded-md bg-sidebar-accent/50 mb-1">
+            <div className="text-xs font-medium text-sidebar-foreground truncate">{user.name}</div>
+            <div className="text-xs text-sidebar-foreground/50 truncate">{user.email}</div>
+            <div className="mt-0.5">
+              {user.role === "admin" ? (
+                <span className="text-xs text-blue-400 flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3" /> Admin
+                </span>
+              ) : (
+                <span className="text-xs text-green-400 flex items-center gap-1">
+                  <ShoppingCart className="w-3 h-3" /> Sales
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Visit Shop */}
         <Link href="/shop">
           <div
@@ -116,6 +191,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         >
           {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
           <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+        </button>
+
+        {/* Logout */}
+        <button
+          onClick={() => logoutMutation.mutate()}
+          disabled={logoutMutation.isPending}
+          className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-xs font-medium text-red-400/80 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          <span>{logoutMutation.isPending ? "Signing out..." : "Sign Out"}</span>
         </button>
 
         {/* Contact */}
@@ -151,7 +236,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Desktop Top Bar */}
         <header className="hidden lg:flex items-center justify-between px-6 py-2.5 border-b border-border bg-card/50 backdrop-blur-sm">
-          <div className="text-sm text-muted-foreground font-medium">Kenniefresh.biz — Admin Panel</div>
+          <div className="text-sm text-muted-foreground font-medium">
+            Kenniefresh.biz — {isAdmin ? "Admin Panel" : "Sales Panel"}
+          </div>
           <div className="flex items-center gap-2">
             <StockAlertBell />
             <button
@@ -160,6 +247,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
               {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+            <button
+              onClick={() => logoutMutation.mutate()}
+              disabled={logoutMutation.isPending}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+              title="Sign out"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign Out</span>
             </button>
           </div>
         </header>

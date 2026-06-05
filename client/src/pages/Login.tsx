@@ -1,14 +1,12 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-
-type Mode = "login" | "register";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function Login() {
   const [, navigate] = useLocation();
-  const [mode, setMode] = useState<Mode>("login");
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -17,18 +15,12 @@ export default function Login() {
     setError("");
     setLoading(true);
 
-    const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
-    const body =
-      mode === "login"
-        ? { email, password }
-        : { name, email, password };
-
     try {
-      const res = await fetch(endpoint, {
+      const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(body),
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
@@ -38,7 +30,7 @@ export default function Login() {
         return;
       }
 
-      // Redirect to admin dashboard
+      // Redirect to dashboard
       navigate("/");
       window.location.reload();
     } catch {
@@ -51,68 +43,40 @@ export default function Login() {
   return (
     <div
       className="min-h-screen flex items-center justify-center"
-      style={{ background: "linear-gradient(135deg, #1a3fa8 0%, #2db84b 100%)" }}
+      style={{ background: "linear-gradient(135deg, #1a3fa8 0%, #0d1f5c 60%, #1a3fa8 100%)" }}
     >
       <div
         className="w-full max-w-md mx-4 rounded-2xl shadow-2xl overflow-hidden"
-        style={{ background: "var(--color-surface, #1a1a2e)" }}
+        style={{ background: "rgba(15, 15, 35, 0.95)", border: "1px solid rgba(255,255,255,0.08)" }}
       >
         {/* Header */}
-        <div className="px-8 pt-8 pb-4 text-center">
-          <div className="flex items-center justify-center gap-3 mb-2">
+        <div className="px-8 pt-10 pb-6 text-center">
+          <div className="flex items-center justify-center gap-3 mb-3">
             <div
-              className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg"
-              style={{ background: "#2db84b" }}
+              className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg"
+              style={{ background: "linear-gradient(135deg, #2db84b, #1a9e3f)" }}
             >
               K
             </div>
-            <span className="text-2xl font-bold text-white tracking-tight">
+            <span className="text-3xl font-bold text-white tracking-tight">
               Kennie<span style={{ color: "#2db84b" }}>fresh</span>
             </span>
           </div>
-          <p className="text-sm" style={{ color: "#a0a0b0" }}>
-            Admin Panel — Home of Living Water
+          <p className="text-sm font-medium" style={{ color: "#8888aa" }}>
+            Sales & Inventory Management
           </p>
-        </div>
-
-        {/* Tab switcher */}
-        <div className="flex mx-8 mt-4 rounded-lg overflow-hidden border border-white/10">
-          {(["login", "register"] as Mode[]).map((m) => (
-            <button
-              key={m}
-              onClick={() => { setMode(m); setError(""); }}
-              className="flex-1 py-2 text-sm font-medium transition-colors"
-              style={{
-                background: mode === m ? "#2db84b" : "transparent",
-                color: mode === m ? "#fff" : "#a0a0b0",
-              }}
-            >
-              {m === "login" ? "Sign In" : "Register"}
-            </button>
-          ))}
+          <div
+            className="mt-3 inline-block px-3 py-1 rounded-full text-xs font-medium"
+            style={{ background: "rgba(45,184,75,0.15)", color: "#2db84b", border: "1px solid rgba(45,184,75,0.3)" }}
+          >
+            Staff Portal
+          </div>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="px-8 py-6 space-y-4">
-          {mode === "register" && (
-            <div>
-              <label className="block text-sm font-medium text-white/70 mb-1">
-                Full Name
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                placeholder="e.g. Kennie Fresh"
-                className="w-full px-4 py-2.5 rounded-lg text-white text-sm outline-none border border-white/10 focus:border-green-400 transition-colors"
-                style={{ background: "#ffffff10" }}
-              />
-            </div>
-          )}
-
+        <form onSubmit={handleSubmit} className="px-8 pb-8 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-white/70 mb-1">
+            <label className="block text-sm font-medium mb-1.5" style={{ color: "#c0c0d0" }}>
               Email Address
             </label>
             <input
@@ -121,55 +85,76 @@ export default function Login() {
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="you@kenniefresh.biz"
-              className="w-full px-4 py-2.5 rounded-lg text-white text-sm outline-none border border-white/10 focus:border-green-400 transition-colors"
-              style={{ background: "#ffffff10" }}
+              autoComplete="email"
+              className="w-full px-4 py-3 rounded-lg text-white text-sm outline-none transition-all"
+              style={{
+                background: "rgba(255,255,255,0.07)",
+                border: "1px solid rgba(255,255,255,0.12)",
+              }}
+              onFocus={e => (e.target.style.borderColor = "#2db84b")}
+              onBlur={e => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-white/70 mb-1">
+            <label className="block text-sm font-medium mb-1.5" style={{ color: "#c0c0d0" }}>
               Password
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              placeholder="At least 6 characters"
-              className="w-full px-4 py-2.5 rounded-lg text-white text-sm outline-none border border-white/10 focus:border-green-400 transition-colors"
-              style={{ background: "#ffffff10" }}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                placeholder="Enter your password"
+                autoComplete="current-password"
+                className="w-full px-4 py-3 pr-11 rounded-lg text-white text-sm outline-none transition-all"
+                style={{
+                  background: "rgba(255,255,255,0.07)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                }}
+                onFocus={e => (e.target.style.borderColor = "#2db84b")}
+                onBlur={e => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(s => !s)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                style={{ color: "#8888aa" }}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           {error && (
-            <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">
-              {error}
+            <div className="text-sm rounded-lg px-4 py-3 flex items-start gap-2" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)", color: "#fca5a5" }}>
+              <span className="mt-0.5">⚠</span>
+              <span>{error}</span>
             </div>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-lg font-semibold text-white transition-opacity disabled:opacity-60"
-            style={{ background: "#2db84b" }}
+            className="w-full py-3 rounded-lg font-semibold text-white transition-all mt-2"
+            style={{
+              background: loading ? "#1a9e3f" : "linear-gradient(135deg, #2db84b, #1a9e3f)",
+              opacity: loading ? 0.7 : 1,
+              boxShadow: "0 4px 15px rgba(45,184,75,0.3)",
+            }}
           >
-            {loading
-              ? "Please wait…"
-              : mode === "login"
-              ? "Sign In"
-              : "Create Account"}
+            {loading ? "Signing in…" : "Sign In"}
           </button>
 
-          {mode === "register" && (
-            <p className="text-xs text-center" style={{ color: "#a0a0b0" }}>
-              The first registered account is automatically made an admin.
-            </p>
-          )}
+          <p className="text-center text-xs pt-1" style={{ color: "#666680" }}>
+            Contact your administrator if you need access
+          </p>
         </form>
 
-        <div className="px-8 pb-6 text-center text-xs" style={{ color: "#a0a0b0" }}>
-          © 2026 Kenniefresh.biz · 0538979775
+        <div className="px-8 pb-6 text-center text-xs border-t" style={{ color: "#555570", borderColor: "rgba(255,255,255,0.06)", paddingTop: "16px" }}>
+          © 2026 Kenniefresh.biz · 0538979775 / 0205153749
         </div>
       </div>
     </div>

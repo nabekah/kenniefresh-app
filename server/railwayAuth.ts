@@ -152,6 +152,12 @@ export function registerAuthRoutes(app: Express) {
         return;
       }
 
+      // Check if account is active
+      if (user.isActive === false) {
+        res.status(403).json({ error: "Your account has been deactivated. Please contact an administrator." });
+        return;
+      }
+
       await db.upsertUser({ openId: user.openId, lastSignedIn: new Date() });
 
       const token = await signSession(user.openId, user.name ?? "");

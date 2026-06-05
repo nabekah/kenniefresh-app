@@ -22,6 +22,7 @@ import Expenses from "./pages/Expenses";
 import OnlineOrders from "./pages/OnlineOrders";
 import ShopComingSoon from "./pages/ShopComingSoon";
 import Login from "./pages/Login";
+import UserManagement from "./pages/UserManagement";
 // Shop, ShopCart, ShopCheckout temporarily disabled
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -49,6 +50,7 @@ function Router() {
             <Route path="/online-orders" component={OnlineOrders} />
             <Route path="/expenses" component={Expenses} />
             <Route path="/reports" component={Reports} />
+            <Route path="/users" component={UserManagement} />
             <Route path="/404" component={NotFound} />
             <Route component={NotFound} />
           </Switch>
