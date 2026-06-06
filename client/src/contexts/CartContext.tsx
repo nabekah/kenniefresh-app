@@ -54,8 +54,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const subtotal = items.reduce((s, i) => s + i.product.sellingPrice * i.quantity, 0);
   const shippingFee = subtotal > 50 ? 0 : 5.99;
-  const tax = subtotal * 0.08;
-  const total = subtotal + shippingFee + tax;
+  const tax = 0;
+  const total = subtotal + shippingFee;
   const itemCount = items.reduce((s, i) => s + i.quantity, 0);
 
   return (

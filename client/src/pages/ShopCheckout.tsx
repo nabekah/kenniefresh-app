@@ -186,8 +186,8 @@ export default function ShopCheckout() {
   const [confirmedOrder, setConfirmedOrder] = useState<OnlineOrder | null>(null);
 
   const shippingFee = subtotal > 50 ? 0 : 5.99;
-  const tax = subtotal * 0.08;
-  const total = subtotal + shippingFee + tax;
+  const tax = 0;
+  const total = subtotal + shippingFee;
 
   function validate() {
     const e: Record<string, string> = {};
@@ -583,7 +583,7 @@ export default function ShopCheckout() {
                   </span>
                 </div>
                 <div className="flex justify-between text-gray-500">
-                  <span>Tax (8%)</span><span className="font-medium text-gray-900">{fmt(tax)}</span>
+                   <span>Tax</span><span className="font-medium text-gray-900">GHS 0.00</span>
                 </div>
                 <div className="border-t border-gray-100 pt-2 flex justify-between font-bold text-gray-900 text-base">
                   <span>Total</span><span>{fmt(total)}</span>

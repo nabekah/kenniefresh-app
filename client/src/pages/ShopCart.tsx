@@ -10,8 +10,8 @@ import { fmt } from "@/lib/store";
 export default function ShopCart() {
   const { items, removeFromCart, updateQty, subtotal, itemCount } = useCart();
   const shippingFee = subtotal > 50 ? 0 : 5.99;
-  const tax = subtotal * 0.08;
-  const total = subtotal + shippingFee + tax;
+  const tax = 0;
+  const total = subtotal + shippingFee;
 
   return (
     <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
@@ -98,8 +98,8 @@ export default function ShopCart() {
                     </span>
                   </div>
                   <div className="flex justify-between text-gray-600">
-                    <span>Tax (8%)</span>
-                    <span className="font-medium text-gray-900">{fmt(tax)}</span>
+                    <span>Tax</span>
+                    <span className="font-medium text-gray-900">GHS 0.00</span>
                   </div>
                   {shippingFee > 0 && (
                     <div className="bg-amber-50 rounded-xl p-3 text-xs text-amber-700">

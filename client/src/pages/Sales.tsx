@@ -84,8 +84,8 @@ export default function Sales() {
 
   const subtotal = cartItems.reduce((s, i) => s + i.sellingPrice * i.qty, 0);
   const discountAmt = Math.min(discount, subtotal);
-  const taxAmt = (subtotal - discountAmt) * 0.08;
-  const total = subtotal - discountAmt + taxAmt;
+  const taxAmt = 0;
+  const total = subtotal - discountAmt;
   const profit = cartItems.reduce((s, i) => s + (i.sellingPrice - i.costPrice) * i.qty, 0) - discountAmt;
 
   function addToCart(p: typeof products[0]) {
@@ -244,7 +244,7 @@ export default function Sales() {
                     className="w-24 bg-secondary border border-border rounded px-2 py-1 text-sm data-num text-right focus:outline-none focus:ring-1 focus:ring-primary" />
                 </div>
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Tax (8%)</span><span className="data-num">{fmt(taxAmt)}</span>
+                  <span>Tax</span><span className="data-num">GHS 0.00</span>
                 </div>
                 <div className="border-t border-border pt-2 flex justify-between font-bold text-foreground text-base">
                   <span>Total</span><span className="data-num">{fmt(total)}</span>
