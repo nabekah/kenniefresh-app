@@ -1,35 +1,54 @@
 // =============================================================
 // DESIGN SYSTEM: Industrial Ledger
 // Suppliers: CRUD table with contact info, linked products count
+// DB-backed via tRPC
 // =============================================================
 
 import { useState, useMemo } from "react";
 import { Plus, Search, Edit2, Trash2, Truck, Mail, Phone, MapPin, X } from "lucide-react";
 import { toast } from "sonner";
-import { getSuppliers, addSupplier, updateSupplier, deleteSupplier, getProducts, type Supplier } from "@/lib/store";
+import { trpc } from "@/lib/trpc";
 
 const emptyForm = { name: "", contactName: "", email: "", phone: "", address: "" };
 
 export default function Suppliers() {
-  const [suppliers, setSuppliers] = useState(() => getSuppliers());
-  const products = useMemo(() => getProducts(), []);
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+
+  const utils = trpc.useUtils();
+
+  const { data: suppliers = [], isLoading } = trpc.suppliers.list.useQuery(undefined, { refetchOnWindowFocus: false });
+  const { data: products = [] } = trpc.products.list.useQuery(undefined, { refetchOnWindowFocus: false });
+
+  const createMutation = trpc.suppliers.create.useMutation({
+    onSuccess: () => { utils.suppliers.list.invalidate(); toast.success("Supplier added"); setShowModal(false); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const updateMutation = trpc.suppliers.update.useMutation({
+    onSuccess: () => { utils.suppliers.list.invalidate(); toast.success("Supplier updated"); setShowModal(false); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const deleteMutation = trpc.suppliers.delete.useMutation({
+    onSuccess: () => { utils.suppliers.list.invalidate(); setDeleteConfirm(null); toast.success("Supplier deleted"); },
+    onError: (e) => toast.error(e.message),
+  });
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     if (!q) return suppliers;
     return suppliers.filter(s =>
       s.name.toLowerCase().includes(q) ||
-      s.contactName.toLowerCase().includes(q) ||
-      s.email.toLowerCase().includes(q)
+      (s.contactName ?? "").toLowerCase().includes(q) ||
+      (s.email ?? "").toLowerCase().includes(q)
     );
   }, [suppliers, search]);
 
-  function productCount(supplierId: string) {
+  function productCount(supplierId: number) {
     return products.filter(p => p.supplierId === supplierId).length;
   }
 
@@ -39,31 +58,22 @@ export default function Suppliers() {
     setShowModal(true);
   }
 
-  function openEdit(s: Supplier) {
+  function openEdit(s: typeof suppliers[0]) {
     setEditId(s.id);
-    setForm({ name: s.name, contactName: s.contactName, email: s.email, phone: s.phone, address: s.address });
+    setForm({ name: s.name, contactName: s.contactName ?? "", email: s.email ?? "", phone: s.phone ?? "", address: s.address ?? "" });
     setShowModal(true);
   }
 
   function handleSave() {
     if (!form.name.trim()) { toast.error("Supplier name is required"); return; }
-    if (editId) {
-      updateSupplier(editId, form);
-      toast.success("Supplier updated");
+    if (editId !== null) {
+      updateMutation.mutate({ id: editId, data: form });
     } else {
-      addSupplier(form);
-      toast.success("Supplier added");
+      createMutation.mutate(form);
     }
-    setSuppliers(getSuppliers());
-    setShowModal(false);
   }
 
-  function handleDelete(id: string) {
-    deleteSupplier(id);
-    setSuppliers(getSuppliers());
-    setDeleteConfirm(null);
-    toast.success("Supplier deleted");
-  }
+  const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div className="p-6 space-y-5">
@@ -86,7 +96,9 @@ export default function Suppliers() {
 
       {/* Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <div className="col-span-full text-center py-12 text-muted-foreground">Loading suppliers...</div>
+        ) : filtered.length === 0 ? (
           <div className="col-span-full text-center py-12 text-muted-foreground">
             <Truck className="w-8 h-8 mx-auto mb-2 opacity-40" />
             No suppliers found
@@ -146,7 +158,7 @@ export default function Suppliers() {
           <div className="bg-card border border-border rounded-lg w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <h2 className="font-bold text-lg" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                {editId ? "Edit Supplier" : "Add Supplier"}
+                {editId !== null ? "Edit Supplier" : "Add Supplier"}
               </h2>
               <button onClick={() => setShowModal(false)} className="p-1.5 rounded hover:bg-secondary"><X className="w-4 h-4" /></button>
             </div>
@@ -168,8 +180,8 @@ export default function Suppliers() {
             </div>
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-border">
               <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors">Cancel</button>
-              <button onClick={handleSave} className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium">
-                {editId ? "Save Changes" : "Add Supplier"}
+              <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium disabled:opacity-50">
+                {isSaving ? "Saving..." : (editId !== null ? "Save Changes" : "Add Supplier")}
               </button>
             </div>
           </div>
@@ -177,14 +189,17 @@ export default function Suppliers() {
       )}
 
       {/* Delete Confirm */}
-      {deleteConfirm && (
+      {deleteConfirm !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
           <div className="bg-card border border-border rounded-lg p-6 w-full max-w-sm">
             <h3 className="font-bold text-lg mb-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Delete Supplier?</h3>
             <p className="text-sm text-muted-foreground mb-5">This will remove the supplier record. Products linked to this supplier will remain.</p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-sm hover:bg-secondary rounded-md transition-colors">Cancel</button>
-              <button onClick={() => handleDelete(deleteConfirm)} className="px-4 py-2 text-sm bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors font-medium">Delete</button>
+              <button onClick={() => deleteMutation.mutate({ id: deleteConfirm })} disabled={deleteMutation.isPending}
+                className="px-4 py-2 text-sm bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors font-medium disabled:opacity-50">
+                {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              </button>
             </div>
           </div>
         </div>

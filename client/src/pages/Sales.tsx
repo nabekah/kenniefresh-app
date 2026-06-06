@@ -2,16 +2,19 @@
 // DESIGN SYSTEM: Industrial Ledger
 // Sales: POS-style new sale panel (left) + sales history table (right)
 // Receipt viewer modal, payment method badges, profit tracking
+// DB-backed via tRPC
 // =============================================================
 
 import { useState, useMemo } from "react";
 import {
-  ShoppingCart, Plus, Trash2, Search, X, Receipt,
+  ShoppingCart, Plus, Trash2, Search, Receipt,
   CreditCard, Banknote, Smartphone, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { toast } from "sonner";
-import { getProducts, getSales, addSale, type Sale, type SaleItem, fmt } from "@/lib/store";
+import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+
+const fmt = (n: number | string) => `₵${parseFloat(String(n)).toFixed(2)}`;
 
 function PayBadge({ method }: { method: string }) {
   const map: Record<string, string> = {
@@ -22,13 +25,21 @@ function PayBadge({ method }: { method: string }) {
   return <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", map[method] ?? "badge-in-stock")}>{method}</span>;
 }
 
+type CartItem = {
+  productId: number;
+  productName: string;
+  sku: string;
+  sellingPrice: number;
+  costPrice: number;
+  stock: number;
+  qty: number;
+};
+
 export default function Sales() {
-  const [products] = useState(() => getProducts());
-  const [sales, setSales] = useState(() => getSales());
   const [tab, setTab] = useState<"new" | "history">("new");
 
   // POS state
-  const [cartItems, setCartItems] = useState<{ product: ReturnType<typeof getProducts>[0]; qty: number }[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [productSearch, setProductSearch] = useState("");
   const [discount, setDiscount] = useState(0);
   const [payMethod, setPayMethod] = useState<"Cash" | "Card" | "Mobile">("Cash");
@@ -37,68 +48,83 @@ export default function Sales() {
 
   // History state
   const [histSearch, setHistSearch] = useState("");
-  const [receiptModal, setReceiptModal] = useState<Sale | null>(null);
-  const [expandedSale, setExpandedSale] = useState<string | null>(null);
+  const [expandedSale, setExpandedSale] = useState<number | null>(null);
+
+  const utils = trpc.useUtils();
+
+  const { data: products = [] } = trpc.products.list.useQuery(undefined, { refetchOnWindowFocus: false });
+  const { data: salesData, isLoading: salesLoading } = trpc.sales.list.useQuery(
+    { search: histSearch || undefined },
+    { refetchOnWindowFocus: false }
+  );
+  const sales = Array.isArray(salesData) ? salesData : [];
+
+  const createSaleMutation = trpc.sales.create.useMutation({
+    onSuccess: () => {
+      utils.sales.list.invalidate();
+      utils.products.list.invalidate();
+      setCartItems([]);
+      setDiscount(0);
+      setCustomerName("");
+      setNotes("");
+      toast.success("Sale recorded successfully!");
+      setTab("history");
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const productResults = useMemo(() => {
     if (!productSearch.trim()) return [];
     const q = productSearch.toLowerCase();
-    return products.filter(p => p.stock > 0 && (p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || p.barcode.includes(q))).slice(0, 6);
+    return products.filter(p =>
+      p.stock > 0 &&
+      (p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || (p.barcode ?? "").includes(q))
+    ).slice(0, 6);
   }, [products, productSearch]);
 
-  const subtotal = cartItems.reduce((s, i) => s + i.product.sellingPrice * i.qty, 0);
+  const subtotal = cartItems.reduce((s, i) => s + i.sellingPrice * i.qty, 0);
   const discountAmt = Math.min(discount, subtotal);
   const taxAmt = (subtotal - discountAmt) * 0.08;
   const total = subtotal - discountAmt + taxAmt;
-  const profit = cartItems.reduce((s, i) => s + (i.product.sellingPrice - i.product.costPrice) * i.qty, 0) - discountAmt;
+  const profit = cartItems.reduce((s, i) => s + (i.sellingPrice - i.costPrice) * i.qty, 0) - discountAmt;
 
   function addToCart(p: typeof products[0]) {
     setCartItems(prev => {
-      const existing = prev.find(i => i.product.id === p.id);
-      if (existing) return prev.map(i => i.product.id === p.id ? { ...i, qty: Math.min(i.qty + 1, p.stock) } : i);
-      return [...prev, { product: p, qty: 1 }];
+      const existing = prev.find(i => i.productId === p.id);
+      if (existing) return prev.map(i => i.productId === p.id ? { ...i, qty: Math.min(i.qty + 1, p.stock) } : i);
+      return [...prev, {
+        productId: p.id, productName: p.name, sku: p.sku,
+        sellingPrice: parseFloat(String(p.sellingPrice)),
+        costPrice: parseFloat(String(p.costPrice)),
+        stock: p.stock, qty: 1,
+      }];
     });
     setProductSearch("");
   }
 
-  function updateQty(id: string, qty: number) {
-    if (qty <= 0) { setCartItems(prev => prev.filter(i => i.product.id !== id)); return; }
-    const p = products.find(pr => pr.id === id);
-    setCartItems(prev => prev.map(i => i.product.id === id ? { ...i, qty: Math.min(qty, p?.stock ?? qty) } : i));
+  function updateQty(productId: number, qty: number) {
+    if (qty <= 0) { setCartItems(prev => prev.filter(i => i.productId !== productId)); return; }
+    const p = products.find(pr => pr.id === productId);
+    setCartItems(prev => prev.map(i => i.productId === productId ? { ...i, qty: Math.min(qty, p?.stock ?? qty) } : i));
   }
 
   function handleCheckout() {
     if (cartItems.length === 0) { toast.error("Cart is empty"); return; }
-    const items: SaleItem[] = cartItems.map(i => ({
-      productId: i.product.id, productName: i.product.name, sku: i.product.sku,
-      quantity: i.qty, unitPrice: i.product.sellingPrice, unitCost: i.product.costPrice,
-    }));
-    addSale({
-      items, subtotal: Math.round(subtotal * 100) / 100,
+    createSaleMutation.mutate({
+      items: cartItems.map(i => ({
+        productId: i.productId, productName: i.productName, sku: i.sku,
+        quantity: i.qty, unitPrice: i.sellingPrice, unitCost: i.costPrice,
+      })),
+      subtotal: Math.round(subtotal * 100) / 100,
       discount: Math.round(discountAmt * 100) / 100,
       tax: Math.round(taxAmt * 100) / 100,
       total: Math.round(total * 100) / 100,
       profit: Math.round(profit * 100) / 100,
-      paymentMethod: payMethod, customerName, notes,
+      paymentMethod: payMethod,
+      customerName: customerName || undefined,
+      notes: notes || "",
     });
-    setSales(getSales());
-    setCartItems([]);
-    setDiscount(0);
-    setCustomerName("");
-    setNotes("");
-    toast.success("Sale recorded successfully!");
-    setTab("history");
   }
-
-  const filteredSales = useMemo(() => {
-    const q = histSearch.toLowerCase();
-    if (!q) return sales;
-    return sales.filter(s =>
-      s.receiptNumber.toLowerCase().includes(q) ||
-      (s.customerName ?? "").toLowerCase().includes(q) ||
-      s.items.some(i => i.productName.toLowerCase().includes(q))
-    );
-  }, [sales, histSearch]);
 
   return (
     <div className="p-6 space-y-5">
@@ -174,23 +200,23 @@ export default function Sales() {
                     </tr>
                   </thead>
                   <tbody>
-                    {cartItems.map(({ product: p, qty }) => (
-                      <tr key={p.id} className="border-b border-border/50">
+                    {cartItems.map(item => (
+                      <tr key={item.productId} className="border-b border-border/50">
                         <td className="px-4 py-2.5">
-                          <div className="font-medium text-foreground text-xs">{p.name}</div>
-                          <div className="text-xs text-muted-foreground data-num">{p.sku}</div>
+                          <div className="font-medium text-foreground text-xs">{item.productName}</div>
+                          <div className="text-xs text-muted-foreground data-num">{item.sku}</div>
                         </td>
-                        <td className="px-4 py-2.5 text-right data-num text-muted-foreground">{fmt(p.sellingPrice)}</td>
+                        <td className="px-4 py-2.5 text-right data-num text-muted-foreground">{fmt(item.sellingPrice)}</td>
                         <td className="px-4 py-2.5">
                           <div className="flex items-center justify-center gap-1">
-                            <button onClick={() => updateQty(p.id, qty - 1)} className="w-6 h-6 rounded bg-secondary hover:bg-primary hover:text-primary-foreground flex items-center justify-center transition-colors text-xs">−</button>
-                            <span className="data-num w-8 text-center text-sm">{qty}</span>
-                            <button onClick={() => updateQty(p.id, qty + 1)} className="w-6 h-6 rounded bg-secondary hover:bg-primary hover:text-primary-foreground flex items-center justify-center transition-colors text-xs">+</button>
+                            <button onClick={() => updateQty(item.productId, item.qty - 1)} className="w-6 h-6 rounded bg-secondary hover:bg-primary hover:text-primary-foreground flex items-center justify-center transition-colors text-xs">−</button>
+                            <span className="data-num w-8 text-center text-sm">{item.qty}</span>
+                            <button onClick={() => updateQty(item.productId, item.qty + 1)} className="w-6 h-6 rounded bg-secondary hover:bg-primary hover:text-primary-foreground flex items-center justify-center transition-colors text-xs">+</button>
                           </div>
                         </td>
-                        <td className="px-4 py-2.5 text-right data-num font-medium text-foreground">{fmt(p.sellingPrice * qty)}</td>
+                        <td className="px-4 py-2.5 text-right data-num font-medium text-foreground">{fmt(item.sellingPrice * item.qty)}</td>
                         <td className="px-2 py-2.5">
-                          <button onClick={() => updateQty(p.id, 0)} className="p-1 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors">
+                          <button onClick={() => updateQty(item.productId, 0)} className="p-1 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </td>
@@ -212,7 +238,7 @@ export default function Sales() {
                   <span>Subtotal</span><span className="data-num">{fmt(subtotal)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Discount ($)</span>
+                  <span className="text-muted-foreground">Discount (₵)</span>
                   <input type="number" min="0" max={subtotal} step="0.01" value={discount}
                     onChange={e => setDiscount(parseFloat(e.target.value) || 0)}
                     className="w-24 bg-secondary border border-border rounded px-2 py-1 text-sm data-num text-right focus:outline-none focus:ring-1 focus:ring-primary" />
@@ -221,7 +247,7 @@ export default function Sales() {
                   <span>Tax (8%)</span><span className="data-num">{fmt(taxAmt)}</span>
                 </div>
                 <div className="border-t border-border pt-2 flex justify-between font-bold text-foreground text-base">
-                  <span>Total</span><span className="data-num text-primary">{fmt(total)}</span>
+                  <span>Total</span><span className="data-num">{fmt(total)}</span>
                 </div>
                 <div className="flex justify-between text-xs text-emerald-400">
                   <span>Est. Profit</span><span className="data-num">{fmt(profit)}</span>
@@ -257,10 +283,10 @@ export default function Sales() {
                   className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
               </div>
 
-              <button onClick={handleCheckout} disabled={cartItems.length === 0}
+              <button onClick={handleCheckout} disabled={cartItems.length === 0 || createSaleMutation.isPending}
                 className="w-full py-3 bg-primary text-primary-foreground rounded-md font-semibold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                 <Receipt className="w-4 h-4" />
-                Complete Sale · {fmt(total)}
+                {createSaleMutation.isPending ? "Processing..." : `Complete Sale · ${fmt(total)}`}
               </button>
             </div>
           </div>
@@ -293,12 +319,14 @@ export default function Sales() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredSales.length === 0 ? (
+                  {salesLoading ? (
+                    <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Loading sales...</td></tr>
+                  ) : sales.length === 0 ? (
                     <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">
                       <Receipt className="w-8 h-8 mx-auto mb-2 opacity-40" />
                       No sales found
                     </td></tr>
-                  ) : filteredSales.map(sale => (
+                  ) : sales.map(sale => (
                     <>
                       <tr key={sale.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
                         <td className="px-4 py-3 data-num text-xs font-medium text-primary">{sale.receiptNumber}</td>
@@ -307,7 +335,9 @@ export default function Sales() {
                           <div className="data-num">{new Date(sale.saleDate).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</div>
                         </td>
                         <td className="px-4 py-3 text-sm text-foreground">{sale.customerName || "—"}</td>
-                        <td className="px-4 py-3 text-right data-num text-muted-foreground">{sale.items.reduce((s, i) => s + i.quantity, 0)}</td>
+                        <td className="px-4 py-3 text-right data-num text-muted-foreground">
+                          {Array.isArray(sale.items) ? sale.items.reduce((s: number, i: any) => s + i.quantity, 0) : 0}
+                        </td>
                         <td className="px-4 py-3 text-right data-num font-bold text-foreground">{fmt(sale.total)}</td>
                         <td className="px-4 py-3 text-right data-num text-emerald-400">{fmt(sale.profit)}</td>
                         <td className="px-4 py-3 text-center"><PayBadge method={sale.paymentMethod} /></td>
@@ -323,14 +353,14 @@ export default function Sales() {
                           <td colSpan={8} className="px-8 py-3">
                             <div className="text-xs text-muted-foreground mb-2 font-medium">Items in this sale:</div>
                             <div className="space-y-1">
-                              {sale.items.map((item, i) => (
+                              {Array.isArray(sale.items) && (sale.items as any[]).map((item, i: number) => (
                                 <div key={i} className="flex items-center justify-between text-xs">
                                   <span className="text-foreground">{item.productName} <span className="text-muted-foreground data-num">({item.sku})</span></span>
                                   <span className="data-num text-muted-foreground">{item.quantity} × {fmt(item.unitPrice)} = <span className="text-foreground font-medium">{fmt(item.quantity * item.unitPrice)}</span></span>
                                 </div>
                               ))}
                             </div>
-                            {sale.discount > 0 && <div className="text-xs text-amber-400 mt-1">Discount: -{fmt(sale.discount)}</div>}
+                            {parseFloat(String(sale.discount)) > 0 && <div className="text-xs text-amber-400 mt-1">Discount: -{fmt(sale.discount)}</div>}
                             {sale.notes && <div className="text-xs text-muted-foreground mt-1">Note: {sale.notes}</div>}
                           </td>
                         </tr>

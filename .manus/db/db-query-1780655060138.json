@@ -1,0 +1,19 @@
+{
+  "query": "SELECT id, name, email, role, isActive, loginMethod, createdAt FROM users ORDER BY createdAt;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4ZVsaeaeEBkhX53.root --database 3xoUtJNXeqJqC5zVHr4FYi --execute SELECT id, name, email, role, isActive, loginMethod, createdAt FROM users ORDER BY createdAt;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Admin",
+      "email": "admin@kenniefresh.biz",
+      "role": "admin",
+      "isActive": "1",
+      "loginMethod": "email",
+      "createdAt": "2026-06-05 08:21:38"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\trole\tisActive\tloginMethod\tcreatedAt\n1\tAdmin\tadmin@kenniefresh.biz\tadmin\t1\temail\t2026-06-05 08:21:38\n",
+  "stderr": "",
+  "execution_time_ms": 2034
+}

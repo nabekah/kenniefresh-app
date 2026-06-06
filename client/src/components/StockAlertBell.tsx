@@ -1,45 +1,45 @@
 // =============================================================
 // StockAlertBell — notification bell for low/out-of-stock items
-// Shows a badge count, dropdown panel, notify action, and
-// quick "Restock" shortcut per item → navigates to Purchase Orders
+// DB-backed via tRPC products.getLowStock
 // =============================================================
 
 import { useState, useEffect, useRef } from "react";
 import { Bell, BellRing, AlertTriangle, PackageX, X, CheckCheck, ShoppingCart } from "lucide-react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { getProducts, getSuppliers } from "@/lib/store";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 type AlertItem = {
-  id: string;
+  id: number;
   sku: string;
   name: string;
   stock: number;
   lowStockThreshold: number;
   category: string;
-  supplierId: string;
+  supplierId: number | null;
   alertType: "out" | "low";
 };
 
 export function StockAlertBell() {
   const [open, setOpen] = useState(false);
-  const [products] = useState(() => getProducts());
   const [lastNotified, setLastNotified] = useState<number | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [, navigate] = useLocation();
 
-  // Build alert items from localStorage products
-  const alertItems: AlertItem[] = products
-    .filter(p => p.stock === 0 || p.stock <= p.lowStockThreshold)
+  const { data: lowStockProducts = [] } = trpc.products.getLowStock.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+    refetchInterval: 60_000, // refresh every minute
+  });
+
+  const alertItems: AlertItem[] = lowStockProducts
     .map(p => ({
       id: p.id,
       sku: p.sku,
       name: p.name,
       stock: p.stock,
       lowStockThreshold: p.lowStockThreshold,
-      category: p.category as string,
+      category: p.category ?? "Other",
       supplierId: p.supplierId,
       alertType: (p.stock === 0 ? "out" : "low") as "out" | "low",
     }))
@@ -73,24 +73,28 @@ export function StockAlertBell() {
   });
 
   function handleNotify() {
-    notifyMutation.mutate({ products: alertItems });
+    notifyMutation.mutate({
+      products: alertItems.map(i => ({
+        id: String(i.id),
+        sku: i.sku,
+        name: i.name,
+        stock: i.stock,
+        lowStockThreshold: i.lowStockThreshold,
+        category: i.category,
+      }))
+    });
   }
 
   function handleRestock(item: AlertItem) {
-    // Store the prefill data in sessionStorage so PurchaseOrders page can pick it up
-    const suppliers = getSuppliers();
-    const supplier = suppliers.find(s => s.id === item.supplierId);
-    const restockQty = Math.max(item.lowStockThreshold * 3, 10); // suggest 3x threshold
-
-    const prefill = {
+    const restockQty = Math.max(item.lowStockThreshold * 3, 10);
+    sessionStorage.setItem("kf_restock_prefill", JSON.stringify({
       productId: item.id,
       productName: item.name,
       sku: item.sku,
       supplierId: item.supplierId,
-      supplierName: supplier?.name ?? "Unknown Supplier",
+      supplierName: "Supplier",
       quantity: restockQty,
-    };
-    sessionStorage.setItem("kf_restock_prefill", JSON.stringify(prefill));
+    }));
     setOpen(false);
     navigate("/purchase-orders");
     toast.info(`Opening Purchase Orders for ${item.name}…`);
@@ -121,7 +125,6 @@ export function StockAlertBell() {
         title={`${totalAlerts} stock alert${totalAlerts !== 1 ? "s" : ""}`}
       >
         <BellRing className="w-5 h-5" />
-        {/* Badge */}
         <span className={cn(
           "absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center text-white px-1",
           outCount > 0 ? "bg-red-500" : "bg-amber-500"
@@ -166,7 +169,7 @@ export function StockAlertBell() {
             )}
           </div>
 
-          {/* Alert list with restock buttons */}
+          {/* Alert list */}
           <div className="max-h-72 overflow-y-auto divide-y divide-border/50">
             {alertItems.map(item => (
               <div key={item.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/30 transition-colors group">
@@ -188,11 +191,9 @@ export function StockAlertBell() {
                     }
                   </div>
                 </div>
-                {/* Restock shortcut button */}
                 <button
                   onClick={() => handleRestock(item)}
                   className="flex-shrink-0 flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-md bg-primary/15 text-primary hover:bg-primary hover:text-primary-foreground transition-colors opacity-0 group-hover:opacity-100"
-                  title={`Create purchase order for ${item.name}`}
                 >
                   <ShoppingCart className="w-3 h-3" />
                   Restock
@@ -201,7 +202,7 @@ export function StockAlertBell() {
             ))}
           </div>
 
-          {/* Footer — notify button */}
+          {/* Footer */}
           <div className="px-4 py-3 border-t border-border bg-secondary/30">
             <button
               onClick={handleNotify}

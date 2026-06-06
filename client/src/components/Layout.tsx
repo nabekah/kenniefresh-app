@@ -26,7 +26,6 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getProducts } from "@/lib/store";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -60,8 +59,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     },
   });
 
-  const products = getProducts();
-  const alertCount = products.filter(p => p.stock <= p.lowStockThreshold).length;
+  const { data: lowStockProducts = [] } = trpc.products.getLowStock.useQuery(undefined, { refetchOnWindowFocus: false });
+  const alertCount = lowStockProducts.length;
 
   // Redirect to login if not authenticated — must be in useEffect to avoid setState-during-render
   useEffect(() => {

@@ -2,13 +2,16 @@
 // DESIGN SYSTEM: Industrial Ledger
 // Inventory: Stock level overview, low-stock/out-of-stock alerts,
 // quick stock adjustment, progress bars for stock levels
+// DB-backed via tRPC
 // =============================================================
 
 import { useState, useMemo, useRef } from "react";
-import { AlertTriangle, Package, TrendingDown, CheckCircle, Search, Plus, Minus, X, Pencil, Check } from "lucide-react";
+import { AlertTriangle, Package, TrendingDown, CheckCircle, Search, X, Pencil, Check } from "lucide-react";
 import { toast } from "sonner";
-import { getProducts, updateProduct, type Product, fmt } from "@/lib/store";
+import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+
+const fmt = (n: number | string) => `₵${parseFloat(String(n)).toFixed(2)}`;
 
 function StockBar({ stock, threshold, max }: { stock: number; threshold: number; max: number }) {
   const pct = max > 0 ? Math.min((stock / max) * 100, 100) : 0;
@@ -27,67 +30,69 @@ function StockBadge({ stock, threshold }: { stock: number; threshold: number }) 
 }
 
 export default function Inventory() {
-  const [products, setProducts] = useState(() => getProducts());
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "low" | "out">("all");
-  const [adjustId, setAdjustId] = useState<string | null>(null);
+  const [adjustId, setAdjustId] = useState<number | null>(null);
   const [adjustQty, setAdjustQty] = useState(0);
-  const [adjustNote, setAdjustNote] = useState("");
+  const [editThresholdId, setEditThresholdId] = useState<number | null>(null);
+  const [editThresholdVal, setEditThresholdVal] = useState(0);
+  const thresholdInputRef = useRef<HTMLInputElement>(null);
+
+  const utils = trpc.useUtils();
+
+  const { data: allProducts = [], isLoading } = trpc.products.list.useQuery(
+    { search: search || undefined },
+    { refetchOnWindowFocus: false }
+  );
+
+  const products = useMemo(() => {
+    return allProducts.filter(p => {
+      if (filter === "low") return p.stock > 0 && p.stock <= p.lowStockThreshold;
+      if (filter === "out") return p.stock === 0;
+      return true;
+    });
+  }, [allProducts, filter]);
+
+  const adjustStockMutation = trpc.products.updateStock.useMutation({
+    onSuccess: () => {
+      utils.products.list.invalidate();
+      toast.success(`Stock adjusted successfully`);
+      setAdjustId(null);
+    },
+    onError: (err: { message: string }) => toast.error(err.message),
+  });
 
   const maxStock = useMemo(() => Math.max(...products.map(p => p.stock), 1), [products]);
-
-  const filtered = useMemo(() => {
-    return products.filter(p => {
-      const q = search.toLowerCase();
-      const matchSearch = !q || p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
-      if (filter === "low") return matchSearch && p.stock > 0 && p.stock <= p.lowStockThreshold;
-      if (filter === "out") return matchSearch && p.stock === 0;
-      return matchSearch;
-    });
-  }, [products, search, filter]);
 
   const stats = useMemo(() => ({
     total: products.length,
     inStock: products.filter(p => p.stock > p.lowStockThreshold).length,
     low: products.filter(p => p.stock > 0 && p.stock <= p.lowStockThreshold).length,
     out: products.filter(p => p.stock === 0).length,
-    totalValue: products.reduce((s, p) => s + p.stock * p.costPrice, 0),
+    totalValue: products.reduce((s, p) => s + p.stock * parseFloat(String(p.costPrice)), 0),
   }), [products]);
 
-  function openAdjust(p: Product) {
+  function openAdjust(p: typeof products[0]) {
     setAdjustId(p.id);
     setAdjustQty(0);
-    setAdjustNote("");
   }
 
   function handleAdjust() {
-    if (!adjustId) return;
+    if (adjustId === null) return;
     const p = products.find(pr => pr.id === adjustId);
     if (!p) return;
-    const newStock = Math.max(0, p.stock + adjustQty);
-    updateProduct(adjustId, { stock: newStock });
-    setProducts(getProducts());
-    toast.success(`Stock adjusted: ${p.name} → ${newStock} units`);
-    setAdjustId(null);
+    adjustStockMutation.mutate({ id: adjustId, adjustment: adjustQty });
   }
 
-  // ── Inline threshold editing ──────────────────────────────
-  const [editThresholdId, setEditThresholdId] = useState<string | null>(null);
-  const [editThresholdVal, setEditThresholdVal] = useState(0);
-  const thresholdInputRef = useRef<HTMLInputElement>(null);
-
-  function startEditThreshold(p: Product) {
+  function startEditThreshold(p: typeof products[0]) {
     setEditThresholdId(p.id);
     setEditThresholdVal(p.lowStockThreshold);
     setTimeout(() => thresholdInputRef.current?.select(), 30);
   }
 
-  function saveThreshold(p: Product) {
+  function saveThreshold(p: typeof products[0]) {
     const val = Math.max(0, Math.round(editThresholdVal));
-    updateProduct(p.id, { lowStockThreshold: val });
-    setProducts(getProducts());
-    setEditThresholdId(null);
-    toast.success(`Threshold updated: ${p.name} → ${val}`);
+    adjustStockMutation.mutate({ id: p.id, adjustment: 0, newThreshold: val });
   }
 
   const adjustProduct = products.find(p => p.id === adjustId);
@@ -173,12 +178,14 @@ export default function Inventory() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {isLoading ? (
+                <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Loading inventory...</td></tr>
+              ) : products.length === 0 ? (
                 <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">
                   <Package className="w-8 h-8 mx-auto mb-2 opacity-40" />
                   No products match your filter
                 </td></tr>
-              ) : filtered.map(p => (
+              ) : products.map(p => (
                 <tr key={p.id} className={cn("border-b border-border/50 hover:bg-secondary/30 transition-colors", p.stock === 0 && "bg-red-500/5")}>
                   <td className="px-4 py-3 font-medium text-foreground">{p.name}</td>
                   <td className="px-4 py-3 data-num text-xs text-muted-foreground">{p.sku}</td>
@@ -213,7 +220,7 @@ export default function Inventory() {
                   <td className="px-4 py-3">
                     <StockBar stock={p.stock} threshold={p.lowStockThreshold} max={maxStock} />
                   </td>
-                  <td className="px-4 py-3 text-right data-num text-muted-foreground">{fmt(p.stock * p.costPrice)}</td>
+                  <td className="px-4 py-3 text-right data-num text-muted-foreground">{fmt(p.stock * parseFloat(String(p.costPrice)))}</td>
                   <td className="px-4 py-3 text-center"><StockBadge stock={p.stock} threshold={p.lowStockThreshold} /></td>
                   <td className="px-4 py-3 text-center">
                     <button onClick={() => openAdjust(p)} className="text-xs px-2.5 py-1 bg-secondary hover:bg-primary hover:text-primary-foreground rounded transition-colors text-muted-foreground">
@@ -228,53 +235,32 @@ export default function Inventory() {
       </div>
 
       {/* Adjust Modal */}
-      {adjustId && adjustProduct && (
+      {adjustId !== null && adjustProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-          <div className="bg-card border border-border rounded-lg w-full max-w-sm">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              <h2 className="font-bold" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Adjust Stock</h2>
+          <div className="bg-card border border-border rounded-lg w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-lg" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Adjust Stock</h2>
               <button onClick={() => setAdjustId(null)} className="p-1.5 rounded hover:bg-secondary"><X className="w-4 h-4" /></button>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="space-y-4">
               <div>
-                <div className="font-medium text-foreground">{adjustProduct.name}</div>
-                <div className="text-xs text-muted-foreground data-num">SKU: {adjustProduct.sku}</div>
-              </div>
-              <div className="flex items-center justify-between bg-secondary rounded-lg p-3">
-                <span className="text-sm text-muted-foreground">Current Stock</span>
-                <span className="data-num font-bold text-foreground text-lg">{adjustProduct.stock}</span>
+                <div className="text-sm font-medium text-foreground">{adjustProduct.name}</div>
+                <div className="text-xs text-muted-foreground data-num">Current stock: {adjustProduct.stock} units</div>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-2 block">Adjustment (+ to add, - to remove)</label>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setAdjustQty(q => q - 1)} className="w-8 h-8 rounded bg-secondary hover:bg-primary hover:text-primary-foreground flex items-center justify-center transition-colors">
-                    <Minus className="w-3.5 h-3.5" />
-                  </button>
-                  <input type="number" value={adjustQty} onChange={e => setAdjustQty(parseInt(e.target.value) || 0)}
-                    className="flex-1 bg-secondary border border-border rounded-md px-3 py-2 text-sm data-num text-center focus:outline-none focus:ring-1 focus:ring-primary" />
-                  <button onClick={() => setAdjustQty(q => q + 1)} className="w-8 h-8 rounded bg-secondary hover:bg-primary hover:text-primary-foreground flex items-center justify-center transition-colors">
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                <label className="text-xs text-muted-foreground mb-1 block">Adjustment (+ to add, - to remove)</label>
+                <input type="number" value={adjustQty} onChange={e => setAdjustQty(parseInt(e.target.value) || 0)}
+                  className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm data-num focus:outline-none focus:ring-1 focus:ring-primary" />
               </div>
-              <div className="flex items-center justify-between bg-secondary rounded-lg p-3">
-                <span className="text-sm text-muted-foreground">New Stock</span>
-                <span className={cn("data-num font-bold text-lg", Math.max(0, adjustProduct.stock + adjustQty) === 0 ? "text-red-400" : Math.max(0, adjustProduct.stock + adjustQty) <= adjustProduct.lowStockThreshold ? "text-amber-400" : "text-emerald-400")}>
-                  {Math.max(0, adjustProduct.stock + adjustQty)}
-                </span>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Note (optional)</label>
-                <input value={adjustNote} onChange={e => setAdjustNote(e.target.value)}
-                  placeholder="e.g. Damaged goods, manual count..."
-                  className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+              <div className="text-xs text-muted-foreground">
+                New stock: <span className="data-num font-medium text-foreground">{Math.max(0, adjustProduct.stock + adjustQty)}</span>
               </div>
             </div>
-            <div className="flex gap-3 px-5 py-4 border-t border-border justify-end">
+            <div className="flex justify-end gap-3 mt-5">
               <button onClick={() => setAdjustId(null)} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors">Cancel</button>
-              <button onClick={handleAdjust} disabled={adjustQty === 0}
-                className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed">
-                Apply Adjustment
+              <button onClick={handleAdjust} disabled={adjustStockMutation.isPending || adjustQty === 0}
+                className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium disabled:opacity-50">
+                {adjustStockMutation.isPending ? "Saving..." : "Apply Adjustment"}
               </button>
             </div>
           </div>

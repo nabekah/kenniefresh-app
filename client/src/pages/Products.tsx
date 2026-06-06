@@ -1,19 +1,19 @@
 // =============================================================
 // DESIGN SYSTEM: Industrial Ledger
 // Products: Full CRUD table with SKU/barcode, category filter,
-// search, add/edit modal, status badges
+// search, add/edit modal, status badges — DB-backed via tRPC
 // =============================================================
 
 import { useState, useMemo, useRef } from "react";
 import { Plus, Search, Edit2, Trash2, Package, X, Barcode, ImagePlus, Link as LinkIcon } from "lucide-react";
 import { toast } from "sonner";
-import {
-  getProducts, addProduct, updateProduct, deleteProduct,
-  getSuppliers, type Product, type Category, fmt,
-} from "@/lib/store";
+import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 
+type Category = "Food & Beverage" | "Beverages" | "Water" | "Dairy" | "Household" | "Cleaning" | "Baby Care" | "Rice & Staples" | "Snacks" | "Cooking Oil" | "Bath & Body" | "Other";
 const CATEGORIES: Category[] = ["Food & Beverage", "Beverages", "Water", "Dairy", "Household", "Cleaning", "Baby Care", "Rice & Staples", "Snacks", "Cooking Oil", "Bath & Body", "Other"];
+
+const fmt = (n: number | string) => `₵${parseFloat(String(n)).toFixed(2)}`;
 
 function StockBadge({ stock, threshold }: { stock: number; threshold: number }) {
   if (stock === 0) return <span className="badge-out-of-stock text-xs px-2 py-0.5 rounded-full font-medium">Out of Stock</span>;
@@ -23,26 +23,49 @@ function StockBadge({ stock, threshold }: { stock: number; threshold: number }) 
 
 const emptyForm = {
   sku: "", barcode: "", name: "", category: "Food & Beverage" as Category, description: "",
-  costPrice: 0, sellingPrice: 0, stock: 0, lowStockThreshold: 10, supplierId: "", imageUrl: "",
+  costPrice: 0, sellingPrice: 0, stock: 0, lowStockThreshold: 10, supplierId: null as number | null, imageUrl: "",
 };
 
 export default function Products() {
-  const [products, setProducts] = useState(() => getProducts());
-  const suppliers = useMemo(() => getSuppliers(), []);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState<string>("All");
   const [showModal, setShowModal] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [imgUploading, setImgUploading] = useState(false);
   const [imgTab, setImgTab] = useState<"url" | "upload">("url");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const utils = trpc.useUtils();
+
+  const { data: products = [], isLoading } = trpc.products.list.useQuery(
+    { search: search || undefined, category: catFilter !== "All" ? catFilter : undefined },
+    { refetchOnWindowFocus: false }
+  );
+
+  const { data: suppliers = [] } = trpc.suppliers.list.useQuery(undefined, { refetchOnWindowFocus: false });
+
+  const createMutation = trpc.products.create.useMutation({
+    onSuccess: () => { utils.products.list.invalidate(); toast.success("Product added"); setShowModal(false); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const updateMutation = trpc.products.update.useMutation({
+    onSuccess: () => { utils.products.list.invalidate(); toast.success("Product updated"); setShowModal(false); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const deleteMutation = trpc.products.delete.useMutation({
+    onSuccess: () => { utils.products.list.invalidate(); setDeleteConfirm(null); toast.success("Product deleted"); },
+    onError: (e) => toast.error(e.message),
+  });
+
   const filtered = useMemo(() => {
+    if (!search && catFilter === "All") return products;
     return products.filter(p => {
       const q = search.toLowerCase();
-      const matchSearch = !q || p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || p.barcode.includes(q);
+      const matchSearch = !q || p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || (p.barcode ?? "").includes(q);
       const matchCat = catFilter === "All" || p.category === catFilter;
       return matchSearch && matchCat;
     });
@@ -76,12 +99,14 @@ export default function Products() {
     }
   }
 
-  function openEdit(p: Product) {
+  function openEdit(p: typeof products[0]) {
     setEditId(p.id);
     setForm({
-      sku: p.sku, barcode: p.barcode, name: p.name, category: p.category,
-      description: p.description, costPrice: p.costPrice, sellingPrice: p.sellingPrice,
-      stock: p.stock, lowStockThreshold: p.lowStockThreshold, supplierId: p.supplierId,
+      sku: p.sku, barcode: p.barcode ?? "", name: p.name, category: p.category as Category,
+      description: p.description ?? "", costPrice: parseFloat(String(p.costPrice)),
+      sellingPrice: parseFloat(String(p.sellingPrice)),
+      stock: p.stock, lowStockThreshold: p.lowStockThreshold,
+      supplierId: p.supplierId ?? null,
       imageUrl: p.imageUrl ?? "",
     });
     setImgTab("url");
@@ -89,33 +114,29 @@ export default function Products() {
   }
 
   function handleSave() {
-    if (!form.name.trim() || !form.sku.trim()) {
-      toast.error("Name and SKU are required");
-      return;
-    }
-    if (form.sellingPrice <= 0) {
-      toast.error("Selling price must be greater than 0");
-      return;
-    }
-    if (editId) {
-      updateProduct(editId, form);
-      toast.success("Product updated");
+    if (!form.name.trim() || !form.sku.trim()) { toast.error("Name and SKU are required"); return; }
+    if (form.sellingPrice <= 0) { toast.error("Selling price must be greater than 0"); return; }
+    const payload = {
+      sku: form.sku, barcode: form.barcode, name: form.name, category: form.category,
+      description: form.description, costPrice: form.costPrice, sellingPrice: form.sellingPrice,
+      stock: form.stock, lowStockThreshold: form.lowStockThreshold,
+      supplierId: form.supplierId ?? null,
+      imageUrl: form.imageUrl || null,
+    };
+    if (editId !== null) {
+      updateMutation.mutate({ id: editId, data: payload });
     } else {
-      addProduct(form);
-      toast.success("Product added");
+      createMutation.mutate(payload);
     }
-    setProducts(getProducts());
-    setShowModal(false);
   }
 
-  function handleDelete(id: string) {
-    deleteProduct(id);
-    setProducts(getProducts());
-    setDeleteConfirm(null);
-    toast.success("Product deleted");
-  }
+  const margin = (p: typeof products[0]) => {
+    const sp = parseFloat(String(p.sellingPrice));
+    const cp = parseFloat(String(p.costPrice));
+    return sp > 0 ? ((sp - cp) / sp * 100).toFixed(1) : "0.0";
+  };
 
-  const margin = (p: Product) => p.sellingPrice > 0 ? ((p.sellingPrice - p.costPrice) / p.sellingPrice * 100).toFixed(1) : "0.0";
+  const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div className="p-6 space-y-5">
@@ -167,7 +188,9 @@ export default function Products() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {isLoading ? (
+                <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Loading products...</td></tr>
+              ) : filtered.length === 0 ? (
                 <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">
                   <Package className="w-8 h-8 mx-auto mb-2 opacity-40" />
                   No products found
@@ -224,7 +247,7 @@ export default function Products() {
           <div className="bg-card border border-border rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <h2 className="font-bold text-lg" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                {editId ? "Edit Product" : "Add New Product"}
+                {editId !== null ? "Edit Product" : "Add New Product"}
               </h2>
               <button onClick={() => setShowModal(false)} className="p-1.5 rounded hover:bg-secondary"><X className="w-4 h-4" /></button>
             </div>
@@ -253,7 +276,7 @@ export default function Products() {
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Supplier</label>
-                <select value={form.supplierId} onChange={e => setForm(f => ({ ...f, supplierId: e.target.value }))}
+                <select value={form.supplierId ?? ""} onChange={e => setForm(f => ({ ...f, supplierId: e.target.value ? parseInt(e.target.value) : null }))}
                   className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary">
                   <option value="">Select supplier</option>
                   {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -300,17 +323,13 @@ export default function Products() {
                   </button>
                 </div>
                 {imgTab === "url" ? (
-                  <input
-                    value={form.imageUrl}
-                    onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
+                  <input value={form.imageUrl} onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
                     placeholder="https://example.com/product.jpg"
-                    className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
+                    className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
                 ) : (
                   <div className="flex items-center gap-3">
                     <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
-                    <button type="button" onClick={() => fileInputRef.current?.click()}
-                      disabled={imgUploading}
+                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={imgUploading}
                       className="flex items-center gap-2 px-4 py-2 bg-secondary border border-dashed border-border rounded-md text-sm text-muted-foreground hover:text-foreground hover:border-primary transition-colors disabled:opacity-50">
                       <ImagePlus className="w-4 h-4" />
                       {imgUploading ? "Uploading..." : "Choose image file (max 5MB)"}
@@ -321,16 +340,15 @@ export default function Products() {
                 {form.imageUrl && (
                   <div className="mt-2 flex items-center gap-3">
                     <img src={form.imageUrl} alt="Preview" className="w-16 h-16 rounded-lg object-contain bg-white border border-border" />
-                    <button type="button" onClick={() => setForm(f => ({ ...f, imageUrl: "" }))}
-                      className="text-xs text-destructive hover:underline">Remove image</button>
+                    <button type="button" onClick={() => setForm(f => ({ ...f, imageUrl: "" }))} className="text-xs text-destructive hover:underline">Remove image</button>
                   </div>
                 )}
               </div>
             </div>
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-border">
               <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors">Cancel</button>
-              <button onClick={handleSave} className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium">
-                {editId ? "Save Changes" : "Add Product"}
+              <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium disabled:opacity-50">
+                {isSaving ? "Saving..." : (editId !== null ? "Save Changes" : "Add Product")}
               </button>
             </div>
           </div>
@@ -338,14 +356,17 @@ export default function Products() {
       )}
 
       {/* Delete Confirm */}
-      {deleteConfirm && (
+      {deleteConfirm !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
           <div className="bg-card border border-border rounded-lg p-6 w-full max-w-sm">
             <h3 className="font-bold text-lg mb-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Delete Product?</h3>
             <p className="text-sm text-muted-foreground mb-5">This action cannot be undone. The product and its data will be permanently removed.</p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-sm hover:bg-secondary rounded-md transition-colors">Cancel</button>
-              <button onClick={() => handleDelete(deleteConfirm)} className="px-4 py-2 text-sm bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors font-medium">Delete</button>
+              <button onClick={() => deleteMutation.mutate({ id: deleteConfirm })} disabled={deleteMutation.isPending}
+                className="px-4 py-2 text-sm bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors font-medium disabled:opacity-50">
+                {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              </button>
             </div>
           </div>
         </div>
